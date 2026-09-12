@@ -1,0 +1,868 @@
+<!-- PROTOTYPE — throwaway, not production -->
+<!-- Wayfinder #5 · Drei strukturell verschiedene Lo-Fi-Varianten der v1-Screens, umschaltbar über ?variant=A|B|C oder die Leiste unten. -->
+<!-- Leitplanken ADR-0003: Scan bucht still am Sitzungs-Standort; kein Scan-Zwang beim Entnehmen. -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lo-Fi Prototyp — App-Flow &amp; Screens (v1)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e4e4e4;color:#111;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+#page{max-width:1650px;margin:0 auto;padding:18px 18px 110px}
+.badge-proto{display:inline-block;background:#111;color:#fff;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;margin-bottom:8px}
+#head h1{font-size:17px;letter-spacing:.3px}
+#head .sub{font-size:11px;color:#444;margin-top:5px;max-width:980px}
+.variant{display:none}
+.variant.on{display:block}
+.vhead{border:2px solid #111;background:#fff;padding:12px 14px;margin:28px 0 16px}
+.vhead h2{font-size:14px;margin-bottom:4px}
+.vhead p{font-size:11px;color:#333;max-width:1050px}
+pre.flowmap{margin-top:10px;background:#f7f7f7;border:1.5px dashed #111;padding:10px 12px;font-size:11px;line-height:1.55;white-space:pre;overflow-x:auto}
+.rowb{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-bottom:10px}
+.unit{display:flex;flex-direction:column;align-items:center}
+.phone{width:288px;height:600px;border:2px solid #111;border-radius:26px;background:#fff;position:relative;overflow:hidden;flex:0 0 auto}
+.sbar{height:24px;display:flex;justify-content:space-between;align-items:center;padding:0 14px;font-size:9px;font-weight:700;border-bottom:1.5px solid #111;position:relative;z-index:12;background:#fff}
+.scr{position:absolute;top:24px;left:0;right:0;bottom:0;padding:10px 10px 12px;display:flex;flex-direction:column;overflow:hidden}
+.scr.hasbar{padding-bottom:68px}
+.scr.pb{padding-bottom:44px}
+.cap{margin-top:8px;font-size:11px;font-weight:700;background:#111;color:#fff;padding:2px 10px;border-radius:3px;white-space:nowrap}
+.cap2{font-size:10px;color:#444;margin-top:3px;text-align:center;max-width:290px}
+.notes{width:288px;margin-top:8px}
+.note{border:1.5px dashed #111;background:#f2f2f2;padding:6px 8px;font-size:10px;margin-top:6px}
+.note b{display:inline-block;background:#111;color:#fff;border-radius:2px;font-size:9px;padding:0 4px;margin-right:5px}
+.arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:0 4px;margin-top:190px}
+.arrow .lab{font-size:9px;color:#333;text-align:center;margin-bottom:3px;max-width:96px}
+.top{height:36px;display:flex;align-items:center;gap:8px;border-bottom:1.5px solid #111;padding:0 2px;margin-bottom:10px;font-size:12px;font-weight:700;flex:0 0 auto}
+.top .bk{font-size:18px;line-height:1}
+.top .ttl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.top .act{font-size:9px;font-weight:400;color:#111;border:1px solid #111;border-radius:3px;padding:2px 6px;background:#fff;white-space:nowrap}
+.search{flex:0 0 auto;height:30px;border:1.5px solid #111;border-radius:15px;display:flex;align-items:center;gap:7px;padding:0 11px;font-size:10px;color:#666;margin-bottom:10px;background:#fff}
+.sec{font-size:9px;letter-spacing:1.2px;color:#555;margin:0 0 6px;flex:0 0 auto}
+.lrow{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1.5px solid #111;border-radius:7px;padding:8px 9px;margin-bottom:7px;background:#fff;flex:0 0 auto}
+.lrow .n{font-size:11px;font-weight:700}
+.lrow .s{font-size:9px;color:#555}
+.qchip{flex:0 0 auto;min-width:24px;text-align:center;border:1.5px solid #111;border-radius:5px;font-size:11px;font-weight:700;padding:2px 5px;background:#fff}
+.chip{display:inline-block;border:1px solid #111;border-radius:3px;font-size:9px;padding:0 5px;background:#fff}
+.btn{display:block;border:1.5px solid #111;border-radius:7px;background:#fff;font-size:10px;font-weight:700;padding:9px 6px;text-align:center;margin-bottom:7px;flex:0 0 auto;color:#111}
+.btn.solid{background:#111;color:#fff}
+.btn.ghostb{border-style:dashed;font-weight:400;color:#555}
+.btn.big{font-size:13px;padding:16px 6px}
+.fab{position:absolute;right:12px;bottom:16px;width:56px;height:56px;border-radius:50%;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:10}
+.fab .t{font-size:7px;letter-spacing:.5px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:56px;border-top:1.5px solid #111;background:#fff;display:flex;z-index:10}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:8px;color:#777;position:relative}
+.tab.on{color:#111;font-weight:700}
+.tab .ic{font-size:13px;line-height:1}
+.tab .bdg{position:absolute;top:6px;right:14px;font-size:7px;background:#111;color:#fff;border-radius:4px;padding:0 3px}
+.tscan{flex:0 0 70px;display:flex;align-items:center;justify-content:center}
+.tscan .circ{width:48px;height:48px;border-radius:50%;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin-top:-24px;border:2.5px solid #fff;box-shadow:0 0 0 1.5px #111}
+.tscan .circ .t{font-size:6.5px;letter-spacing:.5px}
+.dim{position:absolute;top:24px;left:0;right:0;bottom:0;background:#d6d6d6;z-index:6}
+.sheet{position:absolute;left:0;right:0;top:46%;bottom:0;background:#fff;border-top:2px solid #111;border-radius:18px 18px 0 0;z-index:9;padding:8px 12px 14px;display:flex;flex-direction:column;overflow:hidden}
+.sheet.full{top:44px}
+.sheet.dimmed{opacity:.5;z-index:8}
+.grab{width:44px;height:4px;background:#111;border-radius:2px;margin:0 auto 10px;flex:0 0 auto}
+.ov{position:absolute;top:24px;left:0;right:0;bottom:0;background:#d6d6d6;z-index:9;display:flex;flex-direction:column;justify-content:flex-end}
+.ovcard{background:#fff;border-top:2px solid #111;border-radius:16px 16px 0 0;padding:12px 12px 14px}
+.ghost{border:1.5px dashed #888;border-radius:8px;background:repeating-linear-gradient(45deg,#f6f6f6 0 6px,#ebebeb 6px 12px);display:flex;align-items:center;justify-content:center;font-size:9px;color:#666;text-align:center;padding:6px;flex:0 0 auto}
+.ocrbox{border:1.5px solid #111;border-radius:6px;background:#fff;padding:7px 9px;font-size:9.5px;white-space:pre-wrap;flex:0 0 auto;line-height:1.7}
+.foot{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:9px;color:#555;border-top:1px dashed #999;text-align:center;z-index:7;background:#fff}
+.kv{font-size:10.5px;margin:8px 0}
+.row2{display:flex;gap:8px;flex:0 0 auto}
+.row2 .btn{flex:1;margin-bottom:7px}
+.inp{border:1.5px solid #111;border-radius:6px;height:28px;display:flex;align-items:center;padding:0 8px;font-size:9.5px;color:#888;background:#fff;margin-bottom:7px;flex:0 0 auto}
+.swipe{border:1.5px dashed #888;border-radius:7px;padding:8px;font-size:9.5px;color:#555;text-align:center;margin-bottom:7px;flex:0 0 auto}
+.match{border:1.5px solid #111;border-radius:7px;padding:8px 9px;margin-bottom:7px;background:#fff;flex:0 0 auto}
+.match .pct{font-size:9px;border:1px solid #111;border-radius:3px;padding:0 4px;align-self:center}
+.bci{color:inherit}
+#switcher{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:#111;color:#fff;border-radius:999px;padding:5px 8px;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:100}
+#switcher button{background:none;border:none;color:#fff;font:inherit;font-size:15px;cursor:pointer;padding:4px 9px}
+#switcher .lab{font-size:11px;padding:0 8px;white-space:nowrap}
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="bc" viewBox="0 0 26 18"><g fill="currentColor">
+    <rect x="0" width="2" height="18"/><rect x="4" width="1" height="18"/><rect x="7" width="3" height="18"/>
+    <rect x="12" width="1" height="18"/><rect x="15" width="2" height="18"/><rect x="19" width="1" height="18"/><rect x="22" width="2" height="18"/>
+  </g></symbol>
+</svg>
+
+<div id="page">
+  <div id="head">
+    <span class="badge-proto">PROTOTYPE — THROWAWAY, NOT PRODUCTION</span>
+    <h1>Lo-Fi-Prototyp · App-Flow &amp; Screens (v1)</h1>
+    <div class="sub">Wayfinder #5 · Drei strukturell verschiedene Varianten, umschaltbar über die Leiste unten oder <b>?variant=A|B|C</b> (Tastatur: ←/→).
+    Leitplanken (ADR-0003): Scan bucht still am Sitzungs-Standort — kein Dialog, kein Standort-Zwang. Kein Scan-Zwang beim Entnehmen (Tap/Swipe).</div>
+  </div>
+
+  <!-- ================= VARIANTE A ================= -->
+  <section class="variant" id="vA">
+    <div class="vhead">
+      <h2>Variante A — Nav-Stack + Floating-Action-Scan-Button</h2>
+      <p>Klassische iOS-Push-Navigation. Scan ist ein Floating-Button (FAB) auf den Basis-Screens; alle Detail-Screens werden gepusht (Back-Button oben links). Scan-Session ist eine gepushte Seite, keine permanente Fläche.</p>
+      <pre class="flowmap">[Home]──FAB──▶[Scan-Session]──Scan──▶[Mengen-Overlay]
+  │                                     │
+  ├─Zeile-Tap─────────────▶[Produkt-Detail]◀─"Details"
+  ├─oben rechts───────────▶[Standorte verwalten]
+  └─⚠-Badge───────────────▶[Ungelöste Queue]──Foto/Manuell──▶[Foto-Flow]
+Jede Seite: Push-Stack, Back = "‹" oben links · FAB nur auf Home</pre>
+    </div>
+
+    <div class="rowb">
+      <!-- A1 Home -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr pb">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">⚠ 2</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="sec">BESTAND (2 STANDORTE)</div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+            <div class="lrow"><div><div class="n">Kräutertee 20 Beutel</div><div class="s">GTIN 4022200000000 · Vorratsschrank 2 · Keller 1</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Waschmittel 1,5 l</div><div class="s">GTIN 4033300000000 · Keller</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Alkaliseife 250 ml</div><div class="s">GTIN 4044400000000 · Vorratsschrank</div></div><span class="qchip">1</span></div>
+            <div class="lrow"><div><div class="n">Trockenfrüchte 200 g</div><div class="s">GTIN 4055500000000 · Keller 1 · Vorratsschrank 2</div></div><span class="qchip">3</span></div>
+          </div>
+          <div class="fab"><svg class="bci" width="26" height="17" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div>
+        </div>
+        <div class="cap">Home</div>
+        <div class="cap2">Suche + Bestandsliste</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Antwort in &lt;5 s: Suche + Liste, kein Onboarding (Issue #5).</div>
+          <div class="note"><b>2</b>FAB nur auf Home (Basis-Screen); gepuschte Seiten haben Back-Button, keinen FAB.</div>
+          <div class="note"><b>3</b>⚠-Badge = Anzahl Ungelöster Scans, Einstieg in die Queue.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">FAB</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A2 Scan-Session -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr pb">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Scan</span></div>
+            <div class="sec">SITZUNGS-STANDORT (VORWÄHLEN)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="text-align:left">Vorratsschrank</span><span>▾ wechseln</span></div>
+            <div class="ghost" style="height:150px;margin-bottom:10px">Kamera bereit<br>(GTIN / Strichcode)</div>
+            <div class="btn solid big"><svg class="bci" width="24" height="16" viewBox="0 0 26 18" style="vertical-align:-3px"><use href="#bc"/></svg> &nbsp;Scan (Button-Scan)</div>
+            <div class="swipe">1 Tap = 1 Scan = +1 Einbuchen<br>(Supermarkt-Kassen-Prinzip)</div>
+          </div>
+          <div class="foot">Bucht still ein am Sitzungs-Standort: Vorratsschrank · ADR-0003</div>
+        </div>
+        <div class="cap">Scan-Session</div>
+        <div class="cap2">Sitzungs-Standort vorwählen · Button-Scan</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Sitzungs-Standort vorwählen; wechselbar vor/innerhalb der Session — nie pro Scan.</div>
+          <div class="note"><b>2</b>Button-Scan statt Dauermodus: v1 bewusst ohne kontinuierlichen Scan (ADR-0001 hält ihn als späteren Ausbau fest).</div>
+          <div class="note"><b>3</b>Einbuchen = +1 pro Scan am Sitzungs-Standort (Glossar/ADR-0003).</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">1 Scan</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A3 Mengen-Overlay -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Scan</span></div>
+            <div class="sec">SITZUNGS-STANDORT (VORWÄHLEN)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="text-align:left">Vorratsschrank</span><span>▾ wechseln</span></div>
+            <div class="ghost" style="height:150px">Kamera bereit</div>
+          </div>
+          <div class="ov">
+            <div class="ovcard">
+              <div class="sec">EINBUCHEN +1</div>
+              <div style="font-size:12px;font-weight:700">Alve… Shampoo 250 ml</div>
+              <div class="s" style="font-size:9px;color:#555">GTIN 4012345678901 · Treffer: Katalogcache</div>
+              <div class="kv">Vorratsschrank: 4 → <b>5</b></div>
+              <div class="s" style="font-size:9px;color:#888;border-top:1px dashed #999;padding-top:6px">Auch vorhanden: Keller 2 (passive Info)</div>
+              <div class="row2" style="margin-top:8px"><span class="btn solid">Wieder scannen +1</span><span class="btn">Details</span></div>
+              <span class="btn ghostb">Schließen (nach unten swipen)</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap">Scan-Session · Mengen-Overlay</div>
+        <div class="cap2">Zustand direkt nach Scan</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Passive Ortsinfo (graue Zeile) — kein Dialog, kein Standort-Zwang, kein Umschalten während der Session (ADR-0003).</div>
+          <div class="note"><b>2</b>Kein Treffer (dm / Katalogcache) → "Ungelöster Scan" landet in der Queue; kein Fehler-Dialog, Scan-Flow bricht nie (ADR-0002/0004).</div>
+          <div class="note"><b>3</b>"Details" pusht die Produkt-Detail-Screen.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">"Details" / Zeile-Tap</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A4 Produkt-Detail -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Alve… Shampoo 250 ml</span></div>
+            <div class="ghost" style="height:80px;margin-bottom:8px">Bild (Katalog)</div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">GTIN 4012345678901 · Quelle: mcp (dm)</div>
+            <div class="sec">BESTAND JE STANDORT</div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div><div class="s">Sitzungs-Standort</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 14px;margin:0">−</span><span class="qchip">4</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div></div><span class="qchip">2</span></div>
+            <div class="swipe">Zeile nach links swipen = Entnehmen −1<br>(kein Scan-Zwang)</div>
+            <div class="sec" style="margin-top:2px">VERSCHIEBEN</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center"><span style="text-align:left">Vorratsschrank → Keller</span><span>1 ▾</span></div>
+          </div>
+        </div>
+        <div class="cap">Produkt-Detail</div>
+        <div class="cap2">Mengen je Standort · Entnehmen · Verschieben</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Entnehmen per Tap (−) oder Swipe — ohne Scan (ADR-0003, bewusst verworfener Scan-Zwang).</div>
+          <div class="note"><b>2</b>Verschieben = Mengen-Transfer zwischen zwei Beständen (Produkt × Standort → Menge, ADR-0003).</div>
+          <div class="note"><b>3</b>Bestand ist immer pro Standort — die Gesamtzahl in der Home-Liste ist nur die Summe.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowb">
+      <!-- A5 Standorte -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Standorte verwalten</span></div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div><div class="s">6 Produkte · Sitzungs-Standort</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div><div class="s">5 Produkte</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="sec" style="margin-top:6px">NEUER STANDORT</div>
+            <div class="inp">Neuer Standort (frei definierbar)</div>
+            <div class="btn">Hinzufügen</div>
+            <div class="s" style="font-size:9px;color:#888;margin-top:2px">Löschbar nur, wenn dort kein Bestand mehr liegt.</div>
+          </div>
+        </div>
+        <div class="cap">Standorte verwalten</div>
+        <div class="cap2">frei definierbar, Defaults: Vorratsschrank + Keller</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Standorte sind frei definierbar (ADR-0003: nur eine Tabelle, keine feste Verdrahtung).</div>
+          <div class="note"><b>2</b>Der Standort ist Anker des Sitzungs-Standorts — dort bucht der Scan still ein.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">⚠-Badge (Home oben rechts)</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A6 Queue -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Ungelöste Scans (2)</span></div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">Werden bei Netzempfang automatisch nachaufgelöst (dm → Katalogcache).</div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4099910000000</div><div class="s">Keller · 1× · heute 14:02</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4055500000000</div><div class="s">Vorratsschrank · 3× · gestern 19:40</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+          </div>
+        </div>
+        <div class="cap">Ungelöst-Queue</div>
+        <div class="cap2">Ungelöste Scans + Auflösung</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Ein Ungelöster Scan zählt sofort als Bestand (ADR-0003) — die Queue ist Verwaltung, kein Puffer.</div>
+          <div class="note"><b>2</b>Treffer (automatisch oder per Foto/Manuell) → GTIN an Produkt verlinken, Eintrag in den Bestand überführen.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">"Foto" / "Manuell"</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A7 Foto-Flow 1 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Foto-Erkennung</span></div>
+            <div class="ghost" style="height:160px;margin-bottom:10px">Foto: Verpackung / Etikett</div>
+            <div class="btn solid">Analysieren (OCR)</div>
+            <div class="sec">OCR-TEXT (on-device, offline)</div>
+            <div class="ocrbox">"Alve…de"
+"Shampoo 250 ml"
+"4012 3456 78901"</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Erkennung · 1/2</div>
+        <div class="cap2">Foto → OCR</div>
+        <div class="notes">
+          <div class="note"><b>1</b>OCR via Vision on-device — läuft offline im Keller (ADR-0004).</div>
+          <div class="note"><b>2</b>Kein VLM in v1 (ADR-0001/0004): OCR + Katalog-Match statt Bildverstehen.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">OCR fertig</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- A8 Foto-Flow 2 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Treffer: dm-Katalog</span></div>
+            <div class="sec">KATALOG-TREFFER (braucht Netz)</div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Shampoo 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">92 %</span><span class="btn solid" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Conditioner 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">71 %</span><span class="btn" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="sec" style="margin-top:4px">KEIN TREFFER → MANUELL ANLEGEN</div>
+            <div class="inp">Name</div>
+            <div class="inp">Marke</div>
+            <div class="inp">GTIN (aus OCR / händisch)</div>
+            <div class="btn">Produkt speichern</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Erkennung · 2/2</div>
+        <div class="cap2">Treffer bestätigen oder manuell anlegen</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Bestätigen verlinkt die GTIN mit dem Produkt; der Queue-Eintrag wird aufgelöst (ADR-0004).</div>
+          <div class="note"><b>2</b>Katalog-Match braucht Netz; ohne Empfang bleibt der Eintrag in der Queue (ADR-0002/0003) — Scan-Flow bricht nie ab.</div>
+          <div class="note"><b>3</b>Manuelle Anlage ist dauerhafter Fallback, kein Sonderpfad.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VARIANTE B ================= -->
+  <section class="variant" id="vB">
+    <div class="vhead">
+      <h2>Variante B — Tab-Bar mit zentralem Scan-Tab</h2>
+      <p>Permanente Tab-Bar mit vier Ankerpunkten; der Scan-Tab sitzt zentral als erhöhter Kreis — der häufigste Vorgang ist eine Geste entfernt. Scan-Session ist ein eigener, persistenter Tab (kein Push). Produkt-Detail und Foto-Flow werden gepusht, Tab-Bar bleibt sichtbar.</p>
+      <pre class="flowmap">Tab-Bar (persistent): [⌂ Home] [⚑ Standorte] ( ⬤ SCAN ) [⚠ Queue]
+[Home]──Tab──▶[Scan-Session]  (eigener Tab, Sitzungs-Standort bleibt gesetzt)
+[Home]──Zeile-Tap──▶[Produkt-Detail]  (Push, Tab-Bar bleibt)
+[Queue]──Foto/Manuell──▶[Foto-Flow]  (Push, Tab-Bar bleibt)
+Kein FAB. Einstieg in Standorte/Queue = Tab, nicht Versteck in der Top-Bar.</pre>
+    </div>
+
+    <div class="rowb">
+      <!-- B1 Home -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="ttl">Bestand</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="sec">BESTAND (2 STANDORTE)</div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+            <div class="lrow"><div><div class="n">Kräutertee 20 Beutel</div><div class="s">GTIN 4022200000000 · Vorratsschrank 2 · Keller 1</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Waschmittel 1,5 l</div><div class="s">GTIN 4033300000000 · Keller</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Alkaliseife 250 ml</div><div class="s">GTIN 4044400000000 · Vorratsschrank</div></div><span class="qchip">1</span></div>
+            <div class="lrow"><div><div class="n">Trockenfrüchte 200 g</div><div class="s">GTIN 4055500000000 · Keller 1 · Vorratsschrank 2</div></div><span class="qchip">3</span></div>
+          </div>
+          <div class="tabbar">
+            <div class="tab on"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Home</div>
+        <div class="cap2">Suche + Bestandsliste</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Scan ist First-Class-Bürger: zentral in der Tab-Bar statt FAB — Einstieg immer gleich, kein Blickwechsel in die Top-Bar.</div>
+          <div class="note"><b>2</b>Queue-Badge (2) direkt am Tab statt verstecktem Badge.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">Tab ⬤ Scan</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B2 Scan-Tab -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar pb">
+            <div class="top"><span class="ttl">Scan</span></div>
+            <div class="sec">SITZUNGS-STANDORT (VORWÄHLEN)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="text-align:left">Vorratsschrank</span><span>▾ wechseln</span></div>
+            <div class="ghost" style="height:140px;margin-bottom:10px">Kamera bereit<br>(GTIN / Strichcode)</div>
+            <div class="btn solid big"><svg class="bci" width="24" height="16" viewBox="0 0 26 18" style="vertical-align:-3px"><use href="#bc"/></svg> &nbsp;Scan (Button-Scan)</div>
+            <div class="swipe">1 Tap = 1 Scan = +1 Einbuchen</div>
+          </div>
+          <div class="foot">Bucht still ein: Vorratsschrank · ADR-0003</div>
+          <div class="tabbar">
+            <div class="tab"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Scan-Tab</div>
+        <div class="cap2">persistenter Tab, kein Back-Button</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Scan-Session ist permanenter Tab: Sitzungs-Standort und Kamera-Kontext bleiben beim Tab-Wechsel erhalten.</div>
+          <div class="note"><b>2</b>Gleiche Buchungsregeln wie A (ADR-0003): still am Sitzungs-Standort, Button-Scan.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">1 Scan</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B3 Mengen-Overlay -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="ttl">Scan</span></div>
+            <div class="sec">SITZUNGS-STANDORT (VORWÄHLEN)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="text-align:left">Vorratsschrank</span><span>▾ wechseln</span></div>
+            <div class="ghost" style="height:140px">Kamera bereit</div>
+          </div>
+          <div class="ov">
+            <div class="ovcard">
+              <div class="sec">EINBUCHEN +1</div>
+              <div style="font-size:12px;font-weight:700">Alve… Shampoo 250 ml</div>
+              <div class="s" style="font-size:9px;color:#555">GTIN 4012345678901 · Treffer: Katalogcache</div>
+              <div class="kv">Vorratsschrank: 4 → <b>5</b></div>
+              <div class="s" style="font-size:9px;color:#888;border-top:1px dashed #999;padding-top:6px">Auch vorhanden: Keller 2 (passive Info)</div>
+              <div class="row2" style="margin-top:8px"><span class="btn solid">Wieder scannen +1</span><span class="btn">Details</span></div>
+              <span class="btn ghostb">Schließen (nach unten swipen)</span>
+            </div>
+          </div>
+        </div>
+        <div class="cap">Scan-Tab · Mengen-Overlay</div>
+        <div class="cap2">Zustand direkt nach Scan</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Overlay deckt die Tab-Bar ab — der Scan-Flow hat im Scan-Moment das volle Display.</div>
+          <div class="note"><b>2</b>Passive Ortsinfo statt Dialog (ADR-0003); kein Treffer → Queue, ohne Unterbrechung.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">"Details" / Zeile-Tap</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B4 Produkt-Detail -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Alve… Shampoo 250 ml</span></div>
+            <div class="ghost" style="height:76px;margin-bottom:8px">Bild (Katalog)</div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">GTIN 4012345678901 · Quelle: mcp (dm)</div>
+            <div class="sec">BESTAND JE STANDORT</div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div><div class="s">Sitzungs-Standort</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 14px;margin:0">−</span><span class="qchip">4</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div></div><span class="qchip">2</span></div>
+            <div class="swipe">Zeile nach links swipen = Entnehmen −1</div>
+            <div class="sec" style="margin-top:2px">VERSCHIEBEN</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center"><span style="text-align:left">Vorratsschrank → Keller</span><span>1 ▾</span></div>
+          </div>
+          <div class="tabbar">
+            <div class="tab on"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Produkt-Detail</div>
+        <div class="cap2">Push innerhalb des Home-Tabs</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Tab-Bar bleibt beim Detail sichtbar → Scan-Tab immer 1 Geste entfernt (Weg von der Detail-Screen zurück zum Einbuchen).</div>
+          <div class="note"><b>2</b>Entnehmen per Tap/Swipe, kein Scan-Zwang; Verschieben wie in A (ADR-0003).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowb">
+      <!-- B5 Standorte -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="ttl">Standorte</span></div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div><div class="s">6 Produkte · Sitzungs-Standort</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div><div class="s">5 Produkte</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="sec" style="margin-top:6px">NEUER STANDORT</div>
+            <div class="inp">Neuer Standort (frei definierbar)</div>
+            <div class="btn">Hinzufügen</div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><span class="ic">⌂</span>Home</div>
+            <div class="tab on"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Standorte</div>
+        <div class="cap2">eigener Tab statt Push</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Standorte sind in B ein Tab: Verwaltung ist permanent sichtbar, nicht hinter 2 Taps im Push-Stack.</div>
+          <div class="note"><b>2</b>Inhalt wie in A: frei definierbar, Defaults Vorratsschrank + Keller (ADR-0003).</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">Tab ⚠ Queue</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B6 Queue -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="ttl">Ungelöste Scans (2)</span></div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">Werden bei Netzempfang automatisch nachaufgelöst (dm → Katalogcache).</div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4099910000000</div><div class="s">Keller · 1× · heute 14:02</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4055500000000</div><div class="s">Vorratsschrank · 3× · gestern 19:40</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab on"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Queue</div>
+        <div class="cap2">eigener Tab mit Badge</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Ungelöste Scans zählen sofort als Bestand (ADR-0003) — Queue als Tab = ständiges, unaufdringliches Sichtbar-machen der Restschuld.</div>
+          <div class="note"><b>2</b>Foto/Manuell wie in A; Auflösung verlinkt GTIN → Produkt.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">"Foto" / "Manuell"</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B7 Foto-Flow 1 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Foto-Erkennung</span></div>
+            <div class="ghost" style="height:150px;margin-bottom:10px">Foto: Verpackung / Etikett</div>
+            <div class="btn solid">Analysieren (OCR)</div>
+            <div class="sec">OCR-TEXT (on-device, offline)</div>
+            <div class="ocrbox">"Alve…de"
+"Shampoo 250 ml"
+"4012 3456 78901"</div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab on"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Erkennung · 1/2</div>
+        <div class="cap2">Foto → OCR (Push aus Queue)</div>
+        <div class="notes">
+          <div class="note"><b>1</b>OCR on-device, offline (ADR-0004); kein VLM in v1.</div>
+          <div class="note"><b>2</b>Push innerhalb des Queue-Tabs — Tab-Bar bleibt.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">OCR fertig</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- B8 Foto-Flow 2 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr hasbar">
+            <div class="top"><span class="bk">‹</span><span class="ttl">Treffer: dm-Katalog</span></div>
+            <div class="sec">KATALOG-TREFFER (braucht Netz)</div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Shampoo 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">92 %</span><span class="btn solid" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Conditioner 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">71 %</span><span class="btn" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="sec" style="margin-top:4px">KEIN TREFFER → MANUELL ANLEGEN</div>
+            <div class="inp">Name</div>
+            <div class="inp">Marke</div>
+            <div class="inp">GTIN (aus OCR / händisch)</div>
+            <div class="btn">Produkt speichern</div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><span class="ic">⌂</span>Home</div>
+            <div class="tab"><span class="ic">⚑</span>Standorte</div>
+            <div class="tscan"><div class="circ"><svg class="bci" width="22" height="14" viewBox="0 0 26 18"><use href="#bc"/></svg><span class="t">SCAN</span></div></div>
+            <div class="tab on"><span class="bdg">2</span><span class="ic">⚠</span>Queue</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Erkennung · 2/2</div>
+        <div class="cap2">Treffer bestätigen oder manuell anlegen</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Bestätigen verlinkt GTIN → Produkt, Queue-Eintrag wird aufgelöst (ADR-0004).</div>
+          <div class="note"><b>2</b>Ohne Netz: Eintrag bleibt in der Queue (ADR-0002/0003); manuelle Anlage als Fallback.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VARIANTE C ================= -->
+  <section class="variant" id="vC">
+    <div class="vhead">
+      <h2>Variante C — Sheet-basierter Scan-Flow über einer Liste</h2>
+      <p>Kein Push-Stack, keine Tab-Bar: Die Home-Liste ist die einzige Basis-Screen und bleibt immer sichtbar. Alles andere (Scan, Produkt-Detail, Standorte, Queue, Foto-Flow) ist ein Bottom-Sheet, das über der Liste aufgleitet; Dismiss per Swipe-down = Back. Der Scan-Flow läuft als Full-Sheet über der Liste — die Liste bleibt als Kontext sichtbar.</p>
+      <pre class="flowmap">Basis: [Home-Liste]  (bleibt immer sichtbar, wird nie ersetzt)
+  └─[Scan]-Button──▶(Full-Sheet) Scan-Flow
+  └─Zeile-Tap──────▶(Sheet)      Produkt-Detail
+  └─Top-Bar────────▶(Sheet)      Standorte
+  └─[Queue 2]──────▶(Sheet)      Ungelöste Queue
+                       └─Foto/Manuell─▶(Full-Sheet darüber) Foto-Flow
+Dismiss = nach unten swipen · Sheet-Stack statt Push-Stack</pre>
+    </div>
+
+    <div class="rowb">
+      <!-- C1 Home -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="row2" style="margin-bottom:10px"><span class="btn solid" style="flex:2;padding:10px 6px"><svg class="bci" width="20" height="13" viewBox="0 0 26 18" style="vertical-align:-2px"><use href="#bc"/></svg> Scan</span><span class="btn" style="flex:1">Queue 2</span></div>
+            <div class="sec">BESTAND (2 STANDORTE)</div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+            <div class="lrow"><div><div class="n">Kräutertee 20 Beutel</div><div class="s">GTIN 4022200000000 · Vorratsschrank 2 · Keller 1</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Waschmittel 1,5 l</div><div class="s">GTIN 4033300000000 · Keller</div></div><span class="qchip">3</span></div>
+            <div class="lrow"><div><div class="n">Alkaliseife 250 ml</div><div class="s">GTIN 4044400000000 · Vorratsschrank</div></div><span class="qchip">1</span></div>
+            <div class="lrow"><div><div class="n">Trockenfrüchte 200 g</div><div class="s">GTIN 4055500000000 · Keller 1 · Vorratsschrank 2</div></div><span class="qchip">3</span></div>
+          </div>
+        </div>
+        <div class="cap">Home (Basis)</div>
+        <div class="cap2">Liste + prominenter Scan-Button</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Die Liste ist die Basis-Screen — nie ersetzt, nie "weggenavigiert"; jedes Sheet schließt zurück zu ihr.</div>
+          <div class="note"><b>2</b>Scan-Button direkt unter der Suche (kein FAB, keine Tab-Bar) — der primäre Affordance der App.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">[Scan]-Button</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- C2 Scan-Sheet -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+            <div class="lrow"><div><div class="n">Kräutertee 20 Beutel</div><div class="s">Vorratsschrank 2 · Keller 1</div></div><span class="qchip">3</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet full">
+            <div class="grab"></div>
+            <div class="sec">SITZUNGS-STANDORT (VORWÄHLEN)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="text-align:left">Vorratsschrank</span><span>▾ wechseln</span></div>
+            <div class="ghost" style="height:120px;margin-bottom:10px">Kamera bereit (GTIN / Strichcode)</div>
+            <div class="btn solid big"><svg class="bci" width="24" height="16" viewBox="0 0 26 18" style="vertical-align:-3px"><use href="#bc"/></svg> &nbsp;Scan (Button-Scan)</div>
+            <div class="swipe" style="margin-bottom:0">1 Tap = 1 Scan = +1 Einbuchen · bucht still: Vorratsschrank (ADR-0003)</div>
+          </div>
+        </div>
+        <div class="cap">Scan-Flow (Full-Sheet)</div>
+        <div class="cap2">über der Liste, Liste bleibt sichtbar</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Full-Sheet statt eigener Screen: die Liste bleibt als gedimmter Kontext hinter dem Scan-Flow sichtbar.</div>
+          <div class="note"><b>2</b>Dismiss = Swipe-down; Sitzungs-Standort bleibt wie in A/B gesetzt (gleiche Regeln, ADR-0003).</div>
+          <div class="note"><b>3</b>Mengen-Overlay nach Scan: wie in A/B, schiebt sich über dieses Sheet (passive Ortsinfo statt Dialog).</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">Zeile-Tap</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- C3 Produkt-Detail-Sheet -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+            <div class="lrow"><div><div class="n">Kräutertee 20 Beutel</div><div class="s">Vorratsschrank 2 · Keller 1</div></div><span class="qchip">3</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div style="font-size:12px;font-weight:700">Alve… Shampoo 250 ml</div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">GTIN 4012345678901 · Quelle: mcp (dm)</div>
+            <div class="sec">BESTAND JE STANDORT</div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 14px;margin:0">−</span><span class="qchip">4</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div></div><span class="qchip">2</span></div>
+            <div class="swipe">Swipe = Entnehmen −1 (kein Scan-Zwang)</div>
+            <div class="btn" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0"><span style="text-align:left">Verschieben: Vorratsschrank → Keller</span><span>1 ▾</span></div>
+          </div>
+        </div>
+        <div class="cap">Produkt-Detail (Sheet)</div>
+        <div class="cap2">Mengen je Standort · Entnehmen · Verschieben</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Sheet statt Push: schliessen = zurück zur Liste, kein Stack zu verwalten.</div>
+          <div class="note"><b>2</b>Entnehmen per Tap/Swipe ohne Scan; Verschieben wie in A/B (ADR-0003).</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">Top-Bar (Standorte)</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- C4 Standorte-Sheet -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sec">STANDORTE VERWALTEN</div>
+            <div class="lrow"><div><div class="n">Vorratsschrank</div><div class="s">6 Produkte · Sitzungs-Standort</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="lrow"><div><div class="n">Keller</div><div class="s">5 Produkte</div></div><div class="row2" style="margin:0"><span class="btn" style="padding:3px 8px;margin:0">✎</span><span class="btn" style="padding:3px 8px;margin:0">✕</span></div></div>
+            <div class="sec" style="margin-top:2px">NEUER STANDORT</div>
+            <div class="inp">Neuer Standort (frei definierbar)</div>
+            <div class="btn" style="margin-bottom:0">Hinzufügen</div>
+          </div>
+        </div>
+        <div class="cap">Standorte (Sheet)</div>
+        <div class="cap2">frei definierbar, Defaults Vorratsschrank + Keller</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Standorte sind in C kein eigener Ankerpunkt, sondern ein Sheet über der Liste.</div>
+          <div class="note"><b>2</b>Inhalt wie in A/B: frei definierbar (ADR-0003), Standort = Anker des Sitzungs-Standorts.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rowb">
+      <!-- C5 Queue-Sheet -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sec">UNGELÖSTE SCANS (2)</div>
+            <div class="s" style="font-size:9px;color:#555;margin-bottom:8px">Automatisch nachaufgelöst bei Netzempfang (dm → Katalogcache).</div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4099910000000</div><div class="s">Keller · 1× · heute 14:02</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+            <div class="lrow" style="align-items:flex-start"><div><div class="n">GTIN 4055500000000</div><div class="s">Vorratsschrank · 3× · gestern 19:40</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2" style="margin-bottom:0"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+          </div>
+        </div>
+        <div class="cap">Queue (Sheet)</div>
+        <div class="cap2">Ungelöste Scans + Auflösung</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Ungelöste Scans zählen sofort als Bestand (ADR-0003).</div>
+          <div class="note"><b>2</b>Queue ist in C ein Sheet, Einstieg über den "Queue 2"-Button neben Scan.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">"Foto" / "Manuell"</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- C6 Foto-Flow 1 (gestapelt) -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet dimmed" style="top:56px;z-index:8">
+            <div class="grab"></div>
+            <div class="sec">UNGELÖSTE SCANS (2)</div>
+            <div class="lrow"><div><div class="n">GTIN 4099910000000</div><div class="s">Keller · 1× · heute 14:02</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+          </div>
+          <div class="sheet full" style="z-index:11;top:100px">
+            <div class="grab"></div>
+            <div class="sec">FOTO-ERKENNUNG</div>
+            <div class="ghost" style="height:130px;margin-bottom:8px">Foto: Verpackung / Etikett</div>
+            <div class="btn solid" style="margin-bottom:8px">Analysieren (OCR)</div>
+            <div class="sec">OCR-TEXT (on-device, offline)</div>
+            <div class="ocrbox" style="margin-bottom:0">"Alve…de"
+"Shampoo 250 ml"
+"4012 3456 78901"</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Flow · 1/2 (Sheet-Stack)</div>
+        <div class="cap2">Foto → OCR, über der Queue</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Sheet-Stack statt Push: Queue-Sheet bleibt (gedimmt) unter dem Foto-Flow, dessen Kante oben rausguckt — der Weg zurück ist sichtbar (iOS-Sheet-über-Sheet).</div>
+          <div class="note"><b>2</b>OCR on-device, offline (ADR-0004); kein VLM in v1.</div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="lab">OCR fertig</div><svg width="70" height="30" viewBox="0 0 70 30"><path d="M2 15 H58 M58 15 l-9 -6 M58 15 l-9 6" stroke="#111" stroke-width="2" fill="none"/></svg></div>
+
+      <!-- C7 Foto-Flow 2 (gestapelt) -->
+      <div class="unit">
+        <div class="phone">
+          <div class="sbar"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="scr">
+            <div class="top"><span class="ttl">Bestand</span><span class="act">Standorte</span></div>
+            <div class="search">⌕ <span>Suche: Produkt oder GTIN</span></div>
+            <div class="lrow"><div><div class="n">Alve… Shampoo 250 ml</div><div class="s">GTIN 4012345678901 · Vorratsschrank</div></div><span class="qchip">4</span></div>
+          </div>
+          <div class="dim"></div>
+          <div class="sheet dimmed" style="top:56px;z-index:8">
+            <div class="grab"></div>
+            <div class="sec">UNGELÖSTE SCANS (2)</div>
+            <div class="lrow"><div><div class="n">GTIN 4099910000000</div><div class="s">Keller · 1× · heute 14:02</div></div><span class="chip">zählt als Bestand</span></div>
+            <div class="row2"><span class="btn">Foto</span><span class="btn">Manuell</span></div>
+          </div>
+          <div class="sheet full" style="z-index:11;top:100px">
+            <div class="grab"></div>
+            <div class="sec">TREFFER: DM-KATALOG (braucht Netz)</div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Shampoo 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">92 %</span><span class="btn solid" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="match"><div class="n" style="font-size:10.5px">Alve… Repair Conditioner 250 ml</div><div class="row2" style="margin-top:6px"><span class="pct">71 %</span><span class="btn" style="padding:4px 6px">Bestätigen</span></div></div>
+            <div class="sec">KEIN TREFFER → MANUELL ANLEGEN</div>
+            <div class="inp">Name</div>
+            <div class="inp">Marke</div>
+            <div class="inp">GTIN (aus OCR / händisch)</div>
+            <div class="btn" style="margin-bottom:0">Produkt speichern</div>
+          </div>
+        </div>
+        <div class="cap">Foto-Flow · 2/2 (Sheet-Stack)</div>
+        <div class="cap2">Treffer bestätigen oder manuell anlegen</div>
+        <div class="notes">
+          <div class="note"><b>1</b>Bestätigen verlinkt GTIN → Produkt; Queue-Eintrag wird aufgelöst (ADR-0004).</div>
+          <div class="note"><b>2</b>Ohne Netz bleibt der Eintrag in der Queue (ADR-0002/0003); manuelle Anlage als dauerhafter Fallback.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="switcher" role="group" aria-label="Prototyp-Variante wählen">
+  <button id="prev" aria-label="Vorherige Variante">←</button>
+  <span class="lab" id="vlab">A</span>
+  <button id="next" aria-label="Nächste Variante">→</button>
+</div>
+
+<script>
+var VS=[
+  {k:'A',name:'A · Nav-Stack + FAB'},
+  {k:'B',name:'B · Tab-Bar + Scan-Tab'},
+  {k:'C',name:'C · Sheets über Liste'}
+];
+function curVariant(){
+  var v=(new URLSearchParams(location.search).get('variant')||'A').toUpperCase();
+  for(var i=0;i<VS.length;i++){if(VS[i].k===v)return v;}
+  return 'A';
+}
+var cur=curVariant();
+function show(k){
+  cur=k;
+  var all=document.querySelectorAll('.variant');
+  for(var i=0;i<all.length;i++){all[i].classList.toggle('on',all[i].id==='v'+k);}
+  var lab=VS[0].name;
+  for(var j=0;j<VS.length;j++){if(VS[j].k===k)lab=VS[j].name;}
+  document.getElementById('vlab').textContent=lab;
+  var u=new URL(location.href);
+  u.searchParams.set('variant',k);
+  history.replaceState(null,'',u);
+}
+function step(d){
+  var i=0;
+  for(var j=0;j<VS.length;j++){if(VS[j].k===cur)i=j;}
+  show(VS[(i+d+VS.length)%VS.length].k);
+}
+document.getElementById('prev').addEventListener('click',function(){step(-1);});
+document.getElementById('next').addEventListener('click',function(){step(1);});
+document.addEventListener('keydown',function(e){
+  var t=document.activeElement;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  if(e.key==='ArrowRight')step(1);
+  else if(e.key==='ArrowLeft')step(-1);
+});
+show(cur);
+</script>
+</body>
+</html>
