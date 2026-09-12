@@ -19,6 +19,13 @@ stack. Consequences:
 - The driving agent translates stack-specific details; the user
   decides product/design questions, not Swift trivia.
 
+## Version decisions need fresh facts
+
+Before pinning any version (Xcode, iOS deployment target,
+dependencies, CLI tools), verify currency and compatibility via
+a research agent (routing per global `~/.pi/agent/AGENTS.md`) or
+Context7. No version decision from model memory alone.
+
 ## Agent skills
 
 ### Issue tracker
