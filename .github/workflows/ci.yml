@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (swiftformat + swiftlint)
+    runs-on: macos-26
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Assert Xcode version matches .xcode-version
+        run: |
+          expected="$(cat .xcode-version)"
+          actual="$(xcodebuild -version | awk '/^Xcode/ {print $2}')"
+          echo "Expected Xcode ${expected} (per .xcode-version), runner has Xcode ${actual}"
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Xcode version drift: .xcode-version pins ${expected}, runner has ${actual}"
+            exit 1
+          fi
+
+      - name: Install Swift tools
+        run: brew install swiftformat swiftlint
+
+      - name: SwiftFormat (lint)
+        run: swiftformat --lint .
+
+      - name: SwiftLint
+        run: swiftlint
+
+  test:
+    name: Test (iOS Simulator)
+    runs-on: macos-26
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Assert Xcode version matches .xcode-version
+        run: |
+          expected="$(cat .xcode-version)"
+          actual="$(xcodebuild -version | awk '/^Xcode/ {print $2}')"
+          echo "Expected Xcode ${expected} (per .xcode-version), runner has Xcode ${actual}"
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Xcode version drift: .xcode-version pins ${expected}, runner has ${actual}"
+            exit 1
+          fi
+
+      - name: Install xcbeautify (compact logs)
+        run: brew install xcbeautify
+
+      - name: Run test suite (scripts/test.sh)
+        run: ./scripts/test.sh
+
+  docs:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: markdownlint (all .md)
+        run: npx --yes markdownlint-cli "**/*.md"

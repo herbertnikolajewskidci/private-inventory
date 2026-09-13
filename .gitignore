@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode — build products
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.moved-aside
+*.pbxuser
+*.xcresult
+
+# Xcode — keep shared data (schemes, test plans) in version control:
+# xcshareddata/ is NOT ignored on purpose.
+
+# Swift Package Manager
+# Package.resolved is committed on purpose (ADR-0007): it pins GRDB.
+.build/
+.swiftpm/
