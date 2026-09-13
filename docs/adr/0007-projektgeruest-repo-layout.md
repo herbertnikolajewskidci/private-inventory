@@ -1,4 +1,4 @@
-# Projektgerüst: Monorepo app/, Xcode 27, Single-Target, CI ab Tag 1
+# Projektgerüst: Monorepo app/, Xcode 26, Single-Target, CI ab Tag 1
 
 Der Code wird weitgehend von KI-Agenten geschrieben; der Nutzer
 (DevOps, kein iOS-Hintergrund, siehe AGENTS.md) braucht einen
@@ -10,7 +10,9 @@ Projektgerüst & Repo-Layout" (#7)):
 
 - Monorepo: Code unter `app/` in diesem Repo, neben `docs/`, den
   ADRs und der Wayfinding-Map (Issues).
-- Xcode 27 (App Store), exakte Version in `.xcode-version`
+- Xcode 26 (App Store; lokal 26.6 — die Research-Angabe
+  „Xcode 27“ aus Ticket #7 war falsch, Apple zählt seit 2025
+  jahresbasiert). Exakte Version in `.xcode-version`
   festgeschrieben; CI asserted dagegen (Drift-Frühwarnung).
 - File-system-synchronized groups (Xcode-16-Standard): das Projekt
   referenziert Ordner statt Einzeldateien — Agent legt Datei an =
