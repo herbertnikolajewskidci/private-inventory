@@ -106,6 +106,7 @@
 			);
 			name = PrivateInventory;
 			packageProductDependencies = (
+				AA000000000000000000001C /* GRDB */,
 			);
 			productName = PrivateInventory;
 			productReference = AA0000000000000000000006 /* PrivateInventory.app */;
@@ -162,6 +163,9 @@
 			);
 			mainGroup = AA0000000000000000000002;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AA0000000000000000000003 /* Products */;
 			projectDirPath = "";
@@ -469,6 +473,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA000000000000000000001C /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.11.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = AA0000000000000000000001 /* Project object */;
 }
