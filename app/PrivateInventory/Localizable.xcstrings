@@ -1,23 +1,23 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Inventar" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inventar"
+  "sourceLanguage": "en",
+  "strings": {
+    "Inventar": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inventar"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inventar"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inventory"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
