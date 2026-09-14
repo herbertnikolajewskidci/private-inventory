@@ -6,10 +6,9 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXFileReference section */
-		AA0000000000000000000006 /* PrivateInventory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivateInventory.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0000000000000000000007 /* PrivateInventoryTests.xctest */ = {isa = PBXFileReference; explicitFileType = "wrapper.c-executable"; includeInIndex = 0; path = PrivateInventoryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
+/* Begin PBXBuildFile section */
+		A97B2FB430571D0D00F541F9 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = AA000000000000000000001C /* GRDB */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		AA000000000000000000001A /* PBXContainerItemProxy */ = {
@@ -20,6 +19,11 @@
 			remoteInfo = PrivateInventory;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		AA0000000000000000000006 /* PrivateInventory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrivateInventory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000007 /* PrivateInventoryTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; path = PrivateInventoryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		AA0000000000000000000019 /* Exceptions for "PrivateInventory" folder in "PrivateInventory" target */ = {
@@ -42,12 +46,14 @@
 			exceptions = (
 				AA0000000000000000000019 /* Exceptions for "PrivateInventory" folder in "PrivateInventory" target */,
 			);
-			explicitFileTypes = {};
-			explicitFolders = ();
 			path = PrivateInventory;
 			sourceTree = "<group>";
 		};
-		AA0000000000000000000005 /* PrivateInventoryTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = PrivateInventoryTests; sourceTree = "<group>"; };
+		AA0000000000000000000005 /* PrivateInventoryTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PrivateInventoryTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A97B2FB430571D0D00F541F9 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,7 +171,7 @@
 			mainGroup = AA0000000000000000000002;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AA0000000000000000000003 /* Products */;
@@ -176,14 +183,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXTargetDependency section */
-		AA000000000000000000001B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AA0000000000000000000008 /* PrivateInventory */;
-			targetProxy = AA000000000000000000001A /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		AA000000000000000000000C /* Resources */ = {
@@ -218,6 +217,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA000000000000000000001B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000008 /* PrivateInventory */;
+			targetProxy = AA000000000000000000001A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AA0000000000000000000011 /* Debug */ = {
@@ -474,16 +481,8 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		AA000000000000000000001C /* GRDB */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */;
-			productName = GRDB;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCRemoteSwiftPackageReference section */
-		AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+		AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift";
 			requirement = {
@@ -492,6 +491,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA000000000000000000001C /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA000000000000000000001D /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AA0000000000000000000001 /* Project object */;
 }

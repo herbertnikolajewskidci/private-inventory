@@ -1,3 +1,16 @@
 excluded:
   - build
   - DerivedData
+
+custom_rules:
+  # ADR-0006: the test target uses Swift Testing exclusively.
+  # Ticket #9 shipped `import XCTest` against that decision; this rule
+  # makes any re-introduction a lint error instead of relying on review.
+  no_xctest:
+    name: "No XCTest import (ADR-0006: Swift Testing only)"
+    # Matches direct imports (import XCTest) and scoped declarations
+    # (import class XCTest.XCTestCase), so no import spelling can
+    # reintroduce XCTest (CodeRabbit finding, PR #12).
+    regex: '^\s*import\s+(?:\w+\s+)?XCTest\b'
+    message: "ADR-0006: use Swift Testing (`import Testing`), not XCTest."
+    severity: error
