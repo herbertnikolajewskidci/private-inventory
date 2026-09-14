@@ -21,4 +21,14 @@ struct TestInventory {
     static func product(gtin: String = "4000000000001", name: String = "Mehl") -> Product {
         Product(gtin: gtin, name: name, brand: "Mühle", imageURL: nil, source: .manual)
     }
+
+    /// The seeded default location "Keller".
+    func cellar() throws -> Location? {
+        try repository.fetchLocations().first { $0.name == "Keller" }
+    }
+
+    /// The seeded default location "Vorratsschrank".
+    func pantry() throws -> Location? {
+        try repository.fetchLocations().first { $0.name == "Vorratsschrank" }
+    }
 }

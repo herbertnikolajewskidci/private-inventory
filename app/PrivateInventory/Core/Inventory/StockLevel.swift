@@ -19,11 +19,35 @@ struct StockLevel: Identifiable, Equatable, Codable {
         productID: UUID,
         locationID: UUID,
         quantity: Int = 0
-    ) {
+    ) throws {
+        // The never-negative invariant holds from construction on:
+        // a StockLevel can never represent negative stock.
+        guard quantity >= 0 else {
+            throw InventoryError.negativeQuantity
+        }
         self.id = id
         self.productID = productID
         self.locationID = locationID
         self.quantity = quantity
+    }
+
+    /// Codable decoding validates the quantity as well, so a
+    /// decoded StockLevel cannot represent negative stock (the
+    /// database has the same CHECK constraint, ADR-0003).
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        productID = try container.decode(UUID.self, forKey: .productID)
+        locationID = try container.decode(UUID.self, forKey: .locationID)
+        let decodedQuantity = try container.decode(Int.self, forKey: .quantity)
+        guard decodedQuantity >= 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .quantity,
+                in: container,
+                debugDescription: "StockLevel quantity must not be negative"
+            )
+        }
+        quantity = decodedQuantity
     }
 
     /// Einbuchen (scanIn): raise the quantity by one per scan

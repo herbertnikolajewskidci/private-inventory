@@ -18,8 +18,10 @@ protocol InventoryRepository {
     func fetchProduct(gtin: String) throws -> Product?
 
     /// Einbuchen: raises the quantity of the StockLevel for
-    /// (productID, locationID) by one. Creates the StockLevel when it
-    /// does not exist yet.
+    /// (productID, locationID) by one. Creates the StockLevel when
+    /// it does not exist yet. Throws
+    /// `InventoryError.missingParent` when the product or the
+    /// location does not exist.
     func scanIn(productID: UUID, locationID: UUID) throws -> StockLevel
 
     /// Entnehmen: lowers the quantity of the StockLevel for
@@ -31,8 +33,10 @@ protocol InventoryRepository {
     /// Verschieben: moves `amount` of the product's stock from one
     /// location to the other; the total quantity is preserved.
     /// Throws `InventoryError.insufficientStock` when the source
-    /// quantity is too low and `InventoryError.sameLocation` when
-    /// both locations are identical; nothing is persisted then.
+    /// quantity is too low, `InventoryError.sameLocation` when
+    /// both locations are identical and
+    /// `InventoryError.missingParent` when the product or one of
+    /// the locations does not exist; nothing is persisted then.
     func transfer(
         productID: UUID,
         fromLocationID: UUID,
@@ -50,6 +54,7 @@ protocol InventoryRepository {
     func fetchUnresolvedScans() throws -> [UnresolvedScan]
 
     /// Stores an UnresolvedScan (a GTIN that no source could resolve
-    /// yet).
+    /// yet). Throws `InventoryError.missingParent` when the location
+    /// does not exist.
     func recordUnresolvedScan(_ scan: UnresolvedScan) throws -> UnresolvedScan
 }

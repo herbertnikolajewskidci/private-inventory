@@ -10,16 +10,40 @@ import GRDB
 /// mapping is needed.
 extension Product: FetchableRecord, PersistableRecord {
     static let databaseTableName = "product"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
 }
 
 extension Location: FetchableRecord, PersistableRecord {
     static let databaseTableName = "location"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
 }
 
 extension StockLevel: FetchableRecord, PersistableRecord {
     static let databaseTableName = "stock_level"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
 }
 
 extension UnresolvedScan: FetchableRecord, PersistableRecord {
     static let databaseTableName = "unresolved_scan"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
 }

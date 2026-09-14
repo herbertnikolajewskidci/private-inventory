@@ -8,6 +8,9 @@ custom_rules:
   # makes any re-introduction a lint error instead of relying on review.
   no_xctest:
     name: "No XCTest import (ADR-0006: Swift Testing only)"
-    regex: '^\s*import\s+XCTest\b'
+    # Matches direct imports (import XCTest) and scoped declarations
+    # (import class XCTest.XCTestCase), so no import spelling can
+    # reintroduce XCTest (CodeRabbit finding, PR #12).
+    regex: '^\s*import\s+(?:\w+\s+)?XCTest\b'
     message: "ADR-0006: use Swift Testing (`import Testing`), not XCTest."
     severity: error

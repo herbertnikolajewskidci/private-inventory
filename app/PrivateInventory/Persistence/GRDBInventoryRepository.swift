@@ -47,6 +47,8 @@ struct GRDBInventoryRepository: InventoryRepository {
 
     func scanIn(productID: UUID, locationID: UUID) throws -> StockLevel {
         try queue.write { database in
+            try requireProduct(database, productID)
+            try requireLocation(database, locationID)
             var level = try level(database, productID: productID, locationID: locationID)
                 ?? StockLevel(productID: productID, locationID: locationID)
             level.scanIn()
@@ -78,6 +80,9 @@ struct GRDBInventoryRepository: InventoryRepository {
             throw InventoryError.sameLocation
         }
         return try queue.write { database in
+            try requireProduct(database, productID)
+            try requireLocation(database, fromLocationID)
+            try requireLocation(database, toLocationID)
             var source = try level(database, productID: productID, locationID: fromLocationID)
                 ?? StockLevel(productID: productID, locationID: fromLocationID)
             var destination = try level(database, productID: productID, locationID: toLocationID)
@@ -97,7 +102,7 @@ struct GRDBInventoryRepository: InventoryRepository {
         try queue.read { database in
             if let productID {
                 return try StockLevel
-                    .filter(Column("productID") == productID)
+                    .filter(Column("productID") == productID.uuidString)
                     .fetchAll(database)
             }
             return try StockLevel.fetchAll(database)
@@ -120,6 +125,7 @@ struct GRDBInventoryRepository: InventoryRepository {
 
     func recordUnresolvedScan(_ scan: UnresolvedScan) throws -> UnresolvedScan {
         try queue.write { database in
+            try requireLocation(database, scan.locationID)
             try scan.insert(database)
             return scan
         }
@@ -130,7 +136,39 @@ struct GRDBInventoryRepository: InventoryRepository {
     /// The StockLevel for exactly one product and location, if any.
     private func level(_ database: Database, productID: UUID, locationID: UUID) throws -> StockLevel? {
         try StockLevel
-            .filter(Column("productID") == productID && Column("locationID") == locationID)
+            .filter(
+                Column("productID") == productID.uuidString
+                    && Column("locationID") == locationID.uuidString
+            )
             .fetchOne(database)
+    }
+
+    // MARK: - Parent validation
+
+    // Foreign keys are disabled in production builds (ADR-0005), so
+    // the repository validates referenced parents itself before the
+    // writes of scanIn / transfer / recordUnresolvedScan; otherwise
+    // dangling references would create orphan rows silently.
+
+    /// Throws `InventoryError.missingParent` when no Product exists
+    /// under `id`.
+    private func requireProduct(_ database: Database, _ id: UUID) throws {
+        guard try Product
+            .filter(Column("id") == id.uuidString)
+            .fetchOne(database) != nil
+        else {
+            throw InventoryError.missingParent
+        }
+    }
+
+    /// Throws `InventoryError.missingParent` when no Location exists
+    /// under `id`.
+    private func requireLocation(_ database: Database, _ id: UUID) throws {
+        guard try Location
+            .filter(Column("id") == id.uuidString)
+            .fetchOne(database) != nil
+        else {
+            throw InventoryError.missingParent
+        }
     }
 }

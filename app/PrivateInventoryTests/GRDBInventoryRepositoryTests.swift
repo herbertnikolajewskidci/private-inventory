@@ -74,7 +74,7 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
 
         // When: three scans
         for _ in 0 ..< 3 {
@@ -97,7 +97,7 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
         for _ in 0 ..< 3 {
             _ = try inventory.repository.scanIn(productID: product.id, locationID: cellar.id)
         }
@@ -125,7 +125,7 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
         _ = try inventory.repository.scanIn(productID: product.id, locationID: cellar.id)
 
         // When/Then: withdrawing more than available is refused
@@ -153,8 +153,8 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
-        let pantry = try #require(try pantry(of: inventory))
+        let cellar = try #require(try inventory.cellar())
+        let pantry = try #require(try inventory.pantry())
         for _ in 0 ..< 3 {
             _ = try inventory.repository.scanIn(productID: product.id, locationID: cellar.id)
         }
@@ -195,8 +195,8 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
-        let pantry = try #require(try pantry(of: inventory))
+        let cellar = try #require(try inventory.cellar())
+        let pantry = try #require(try inventory.pantry())
         _ = try inventory.repository.scanIn(productID: product.id, locationID: cellar.id)
 
         // When/Then: moving more than available is refused
@@ -229,7 +229,7 @@ struct GRDBInventoryRepositoryTests {
         // Given
         let inventory = try TestInventory()
         let product = try inventory.repository.createProduct(TestInventory.product())
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
         _ = try inventory.repository.scanIn(productID: product.id, locationID: cellar.id)
 
         // When/Then
@@ -258,7 +258,7 @@ struct GRDBInventoryRepositoryTests {
         let quark = try inventory.repository.createProduct(
             TestInventory.product(gtin: "4000000000002", name: "Quark")
         )
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
         for _ in 0 ..< 2 {
             _ = try inventory.repository.scanIn(productID: mehl.id, locationID: cellar.id)
         }
@@ -286,7 +286,7 @@ struct GRDBInventoryRepositoryTests {
     @Test func unresolvedScanRoundTrips() throws {
         // Given
         let inventory = try TestInventory()
-        let cellar = try #require(try cellar(of: inventory))
+        let cellar = try #require(try inventory.cellar())
         let recorded = try inventory.repository.recordUnresolvedScan(
             UnresolvedScan(
                 gtin: "0000000000000",
@@ -304,15 +304,29 @@ struct GRDBInventoryRepositoryTests {
         #expect(scans.first == recorded)
     }
 
-    // MARK: - Helpers
+    /// recordUnresolvedScan() refuses an unknown location.
+    ///
+    /// Given: a fresh database without that location
+    /// When: an UnresolvedScan is recorded for an unknown location
+    /// Then: InventoryError.missingParent is thrown and nothing is
+    /// stored
+    @Test func recordUnresolvedScanRefusesUnknownLocation() throws {
+        // Given: a fresh database (the location does not exist)
+        let inventory = try TestInventory()
 
-    /// The seeded default location "Keller".
-    private func cellar(of inventory: TestInventory) throws -> Location? {
-        try inventory.repository.fetchLocations().first { $0.name == "Keller" }
-    }
+        // When/Then
+        #expect(throws: InventoryError.missingParent) {
+            try inventory.repository.recordUnresolvedScan(
+                UnresolvedScan(
+                    gtin: "0000000000000",
+                    locationID: UUID(),
+                    quantity: 1,
+                    createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+                )
+            )
+        }
 
-    /// The seeded default location "Vorratsschrank".
-    private func pantry(of inventory: TestInventory) throws -> Location? {
-        try inventory.repository.fetchLocations().first { $0.name == "Vorratsschrank" }
+        // And nothing was stored
+        #expect(try inventory.repository.fetchUnresolvedScans().isEmpty)
     }
 }
