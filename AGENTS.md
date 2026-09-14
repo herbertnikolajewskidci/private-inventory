@@ -26,6 +26,23 @@ dependencies, CLI tools), verify currency and compatibility via
 a research agent (routing per global `~/.pi/agent/AGENTS.md`) or
 Context7. No version decision from model memory alone.
 
+## Pull-Request-Review: CodeRabbit (immer einbeziehen)
+
+CodeRabbit (GitHub App) reviewt automatisch jeden Pull Request in diesem
+Repo. Das gehört fest zum Prozess:
+
+- **Vor jedem Merge** CodeRabbit-Findings abrufen und abarbeiten:
+  `gh api repos/:owner/:repo/pulls/<N>/comments` (Zeilenkommentare) plus
+  PR-Review-Zusammenfassung auf der PR-Seite.
+- Jedes Finding ist entweder zu **beheben** (Fix-Commit im selben PR)
+  oder zu **beantworten/begründen** (PR-Kommentar), bevor gemergt wird.
+- CodeRabbit kennt die ADRs nicht: Es kann Verstöße gegen dokumentierte
+  Standards (z. B. ADR-0006 Swift Testing, Ticket #9) NICHT als solche
+  erkennen — seine Findings sind Hilfsmittel, nicht Ersatz für die
+  zwei-Achsen-Review (Standards + Spec, siehe `/code-review`).
+- Bekanntes Beispiel: PR #10/#12 — CodeRabbit beschrieb den XCTest-Code
+  positiv, ohne den ADR-0006-Verstoß zu erkennen.
+
 ## Agent skills
 
 ### Issue tracker
