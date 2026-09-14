@@ -1,0 +1,106 @@
+import Foundation
+import GRDB
+@testable import PrivateInventory
+import Testing
+
+/// The schema migrations: tables, default locations, idempotency
+/// across app starts, and the GTIN unique constraint.
+struct InventoryMigrationsTests {
+    /// All four tables exist after the migrations ran.
+    ///
+    /// Given: a fresh in-memory database
+    /// When: the migrations run (InventoryDatabase creation)
+    /// Then: the product, location, stock_level and unresolved_scan
+    /// tables exist
+    @Test func migrationsCreateAllFourTables() throws {
+        // Given/When: fresh database, migrations applied
+        let database = try InventoryDatabase.makeInMemory()
+
+        // Then: the four tables exist
+        try database.queue.read { database in
+            let tableNames = try String.fetchAll(
+                database,
+                sql: "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+            #expect(tableNames.contains("product"))
+            #expect(tableNames.contains("location"))
+            #expect(tableNames.contains("stock_level"))
+            #expect(tableNames.contains("unresolved_scan"))
+        }
+    }
+
+    /// The default locations Keller and Vorratsschrank exist after
+    /// the migrations ran.
+    ///
+    /// Given: a fresh in-memory database
+    /// When: the migrations run
+    /// Then: both default locations can be read by name
+    @Test func migrationsSeedDefaultLocations() throws {
+        // Given/When: fresh database, migrations applied
+        let inventory = try TestInventory()
+        let names = try inventory.repository.fetchLocations().map(\.name)
+
+        // Then: both defaults exist
+        #expect(names.contains("Keller"))
+        #expect(names.contains("Vorratsschrank"))
+    }
+
+    /// The migrations are idempotent across app starts: re-opening
+    /// the same database file and running the migrations again does
+    /// not fail and keeps the data.
+    ///
+    /// Given: a database file that has been migrated once, with one
+    /// product stored
+    /// When: the "app starts" again (open file, run migrations)
+    /// Then: the product is still there
+    @Test func migrationsAreIdempotentAcrossAppStarts() throws {
+        // Given: a file-based database, migrated and used once
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("private-inventory-tests")
+        try FileManager.default.createDirectory(
+            at: directoryURL, withIntermediateDirectories: true
+        )
+        let fileURL = directoryURL.appendingPathComponent("\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        do {
+            // First "app start": migrate, store a product, close
+            let firstStart = try InventoryDatabase(path: fileURL.path)
+            let repository = GRDBInventoryRepository(database: firstStart)
+            _ = try repository.createProduct(TestInventory.product())
+        }
+
+        // When: second "app start" on the same file (re-migrates)
+        let secondStart = try InventoryDatabase(path: fileURL.path)
+        let repository = GRDBInventoryRepository(database: secondStart)
+
+        // Then: the data from the first start is intact
+        let product = try #require(try repository.fetchProduct(gtin: "4000000000001"))
+        #expect(product.name == "Mehl")
+    }
+
+    /// The GTIN unique constraint is enforced by the database itself,
+    /// independent of the repository.
+    ///
+    /// Given: a database with one product for a GTIN
+    /// When: a second row with the same GTIN is inserted directly
+    /// (raw SQL)
+    /// Then: the database rejects the insert
+    @Test func gtinUniqueConstraintIsEnforcedByDatabase() throws {
+        // Given: one product with GTIN 4000000000001
+        let inventory = try TestInventory()
+        _ = try inventory.repository.createProduct(TestInventory.product())
+
+        // When/Then: a direct SQL insert with the same GTIN is
+        // rejected by the unique constraint
+        let duplicateInsert = """
+        INSERT INTO product (id, gtin, name, brand, source) \
+        VALUES ('other-id', '4000000000001', 'Duplicate', 'Brand', 'manual')
+        """
+        #expect(throws: DatabaseError.self) {
+            _ = try inventory.queue.write { database in
+                try database.execute(sql: duplicateInsert)
+            }
+        }
+    }
+}
