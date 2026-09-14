@@ -26,22 +26,22 @@ dependencies, CLI tools), verify currency and compatibility via
 a research agent (routing per global `~/.pi/agent/AGENTS.md`) or
 Context7. No version decision from model memory alone.
 
-## Pull-Request-Review: CodeRabbit (immer einbeziehen)
+## Pull-request review: CodeRabbit (mandatory)
 
-CodeRabbit (GitHub App) reviewt automatisch jeden Pull Request in diesem
-Repo. Das gehört fest zum Prozess:
+CodeRabbit (GitHub App) automatically reviews every pull request in this
+repo. This is a fixed part of the process:
 
-- **Vor jedem Merge** CodeRabbit-Findings abrufen und abarbeiten:
-  `gh api repos/:owner/:repo/pulls/<N>/comments` (Zeilenkommentare) plus
-  PR-Review-Zusammenfassung auf der PR-Seite.
-- Jedes Finding ist entweder zu **beheben** (Fix-Commit im selben PR)
-  oder zu **beantworten/begründen** (PR-Kommentar), bevor gemergt wird.
-- CodeRabbit kennt die ADRs nicht: Es kann Verstöße gegen dokumentierte
-  Standards (z. B. ADR-0006 Swift Testing, Ticket #9) NICHT als solche
-  erkennen — seine Findings sind Hilfsmittel, nicht Ersatz für die
-  zwei-Achsen-Review (Standards + Spec, siehe `/code-review`).
-- Bekanntes Beispiel: PR #10/#12 — CodeRabbit beschrieb den XCTest-Code
-  positiv, ohne den ADR-0006-Verstoß zu erkennen.
+- **Before every merge**, fetch and work through CodeRabbit findings:
+  `gh api repos/:owner/:repo/pulls/<N>/comments` (inline comments) plus
+  the PR review summary on the PR page.
+- Every finding must either be **fixed** (fix commit in the same PR) or
+  **answered/justified** (PR comment) before merging.
+- CodeRabbit does not know the ADRs: it cannot recognize violations of
+  documented standards (e.g. ADR-0006 Swift Testing, ticket #9) as such —
+  its findings are an aid, not a replacement for the two-axis review
+  (Standards + Spec, see `/code-review`).
+- Known example: PR #10/#12 — CodeRabbit described the XCTest code
+  positively without recognizing the ADR-0006 violation.
 
 ## Agent skills
 
