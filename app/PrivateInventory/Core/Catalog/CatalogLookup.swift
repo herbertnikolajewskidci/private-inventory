@@ -233,12 +233,12 @@ struct CatalogLookup {
                 product = existing
             }
 
-            // Einbuchen: one scanIn per scanned unit
-            // (Supermarkt-Kassen-Prinzip, CONTEXT.md).
-            for _ in 0 ..< scan.quantity {
-                _ = try repository.scanIn(productID: product.id, locationID: scan.locationID)
-            }
-            try repository.deleteUnresolvedScan(id: scan.id)
+            // Einbuchen for the queued scan in ONE repository
+            // transaction: the scan's full quantity is booked at the
+            // scan's location and the scan is removed — either both
+            // happen or neither (CodeRabbit finding: per-unit commits
+            // + separate delete could double-book on a retry).
+            _ = try repository.bookUnresolvedScan(scanID: scan.id, productID: product.id)
             resolved += 1
         }
         return resolved

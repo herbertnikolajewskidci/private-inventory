@@ -76,6 +76,31 @@ enum InventoryMigrations {
             }
         }
 
+        // The unresolved_scan.quantity CHECK constraint (same
+        // never-negative invariant as stock_level, ADR-0003/0006).
+        // SQLite cannot add a CHECK to an existing table, so the
+        // migration rebuilds the table (create, copy, drop, rename);
+        // valid rows are carried over unchanged.
+        migrator.registerMigration("0004_unresolved_scan_quantity_check") { database in
+            try database.create(table: "unresolved_scan_new") { table in
+                table.column("id", .text).notNull().primaryKey()
+                table.column("gtin", .text).notNull()
+                table.column("locationID", .text).notNull()
+                    .references("location", onDelete: .cascade)
+                table.column("quantity", .integer).notNull()
+                    .check(sql: "quantity >= 0")
+                table.column("createdAt", .datetime).notNull()
+            }
+            try database.execute(sql: """
+            INSERT INTO "unresolved_scan_new" \
+            ("id", "gtin", "locationID", "quantity", "createdAt")
+            SELECT "id", "gtin", "locationID", "quantity", "createdAt"
+            FROM "unresolved_scan"
+            """)
+            try database.drop(table: "unresolved_scan")
+            try database.rename(table: "unresolved_scan_new", to: "unresolved_scan")
+        }
+
         return migrator
     }
 }
