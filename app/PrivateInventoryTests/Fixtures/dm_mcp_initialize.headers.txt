@@ -1,0 +1,20 @@
+HTTP/2 200 
+cache-control: no-cache, no-transform
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
+content-type: text/event-stream
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+date: Mon, 14 Sep 2026 14:05:20 GMT
+mcp-session-id: 92fa9923128b48d3a0939a4e2f3844c2
+permissions-policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+x-accel-buffering: no
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-vcap-request-id: 84859a49-36c7-4975-7104-7100b876aa3e
+x-xss-protection: 1; mode=block
+via: 1.1 google
+alt-svc: clear
+

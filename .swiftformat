@@ -1,2 +1,6 @@
 --swift-version 6
 --exclude build,DerivedData
+# swiftlint's trailing_comma rule forbids trailing commas in
+# collection literals; align swiftformat with it (SwiftFormat 0.63
+# defaults to ADDING them in multiline literals).
+--commas inline
