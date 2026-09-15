@@ -79,8 +79,13 @@ enum InventoryMigrations {
         // The unresolved_scan.quantity CHECK constraint (same
         // never-negative invariant as stock_level, ADR-0003/0006).
         // SQLite cannot add a CHECK to an existing table, so the
-        // migration rebuilds the table (create, copy, drop, rename);
-        // valid rows are carried over unchanged.
+        // migration rebuilds the table (create, copy, drop, rename).
+        // Policy for invalid legacy rows: pre-0004 databases could
+        // hold negative quantities (nothing validated them before);
+        // the copy carries only valid rows (quantity >= 0) and
+        // discards the invalid ones — a queued scan with a negative
+        // quantity is unusable data, and carrying it over would fail
+        // the CHECK and block the database from opening.
         migrator.registerMigration("0004_unresolved_scan_quantity_check") { database in
             try database.create(table: "unresolved_scan_new") { table in
                 table.column("id", .text).notNull().primaryKey()
@@ -96,6 +101,7 @@ enum InventoryMigrations {
             ("id", "gtin", "locationID", "quantity", "createdAt")
             SELECT "id", "gtin", "locationID", "quantity", "createdAt"
             FROM "unresolved_scan"
+            WHERE "quantity" >= 0
             """)
             try database.drop(table: "unresolved_scan")
             try database.rename(table: "unresolved_scan_new", to: "unresolved_scan")
