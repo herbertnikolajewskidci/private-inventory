@@ -183,4 +183,86 @@ struct OBFOffCatalogSourceTests {
         }
         #expect(await stub.recordedRequests().isEmpty)
     }
+
+    /// An empty GTIN is refused before any network request.
+    ///
+    /// Given: a stub with no recorded responses
+    /// When: resolve(gtin: "")
+    /// Then: CatalogError.invalidGtin is thrown and zero requests were sent
+    @Test func emptyGtinThrowsWithoutNetworkRequest() async throws {
+        // Given
+        let stub = StubURLLoading(responses: [])
+        let source: any CatalogSource = OBFOffCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.invalidGtin(gtin: "")) {
+            try await source.resolve(gtin: "")
+        }
+        #expect(await stub.recordedRequests().isEmpty)
+    }
+
+    /// An HTTP 404 response with status:1 payload is an inconsistent response
+    /// and throws a parse error instead of falling back.
+    ///
+    /// Given: OBF returns HTTP 404 with status:1 in JSON
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.parse is thrown and OFF is not asked
+    @Test func notFoundStatusWithFoundPayloadThrowsParseError() async throws {
+        // Given: server contradiction (HTTP 404 but status: 1)
+        let body = #"{"code":"123456","status":1,"product":{"code":"123456","product_name":"Test"}}"#
+        let stub = StubURLLoading(responses: [
+            .init(statusCode: 404, body: body)
+        ])
+        let source: any CatalogSource = OBFOffCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.self) {
+            try await source.resolve(gtin: "123456")
+        }
+        #expect(await stub.recordedRequests().count == 1)
+    }
+
+    /// A status:1 payload with null product is an inconsistent response
+    /// and throws a parse error instead of returning a clean miss.
+    ///
+    /// Given: OBF returns HTTP 200 with status:1 but product:null
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.parse is thrown and OFF is not asked
+    @Test func statusOneWithoutProductPayloadThrowsParseError() async throws {
+        // Given: server contradiction (status: 1 but product is null)
+        let body = #"{"code":"123456","status":1,"product":null}"#
+        let stub = StubURLLoading(responses: [
+            .init(statusCode: 200, body: body)
+        ])
+        let source: any CatalogSource = OBFOffCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.self) {
+            try await source.resolve(gtin: "123456")
+        }
+        #expect(await stub.recordedRequests().count == 1)
+    }
+
+    /// Transport failures thrown by the injected loader are normalized to
+    /// CatalogError.network.
+    ///
+    /// Given: a loader throwing a custom non-CatalogError
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.network is thrown
+    @Test func foreignLoaderErrorIsNormalizedToNetworkError() async throws {
+        // Given
+        let source: any CatalogSource = OBFOffCatalogSource(loader: FailingURLLoading())
+
+        // When/Then
+        do {
+            _ = try await source.resolve(gtin: "80466468")
+            Issue.record("expected CatalogError.network")
+        } catch let error as CatalogError {
+            guard case let .network(reason) = error else {
+                Issue.record("expected CatalogError.network, got \(error)")
+                return
+            }
+            #expect(reason.contains("catalog transport failed"))
+        }
+    }
 }

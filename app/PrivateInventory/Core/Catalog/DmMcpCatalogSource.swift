@@ -38,7 +38,7 @@ actor DmMcpCatalogSource: CatalogSource {
     }
 
     func resolve(gtin: String) async throws -> ResolvedProduct? {
-        guard let gtinValue = Int64(gtin) else {
+        guard !gtin.isEmpty, gtin.allSatisfy({ $0.isNumber && $0.isASCII }), let gtinValue = Int64(gtin) else {
             throw CatalogError.invalidGtin(gtin: gtin)
         }
         try await ensureSession()
@@ -74,7 +74,7 @@ actor DmMcpCatalogSource: CatalogSource {
             ),
             timeout: 10
         )
-        let (data, response) = try await loader.load(request)
+        let (data, response) = try await load(request)
         guard response.statusCode == 200 else {
             throw CatalogError.network(reason: "dm MCP initialize answered HTTP \(response.statusCode)")
         }
@@ -91,7 +91,10 @@ actor DmMcpCatalogSource: CatalogSource {
                 reason: "dm MCP initialize JSON-RPC error \(rpcError.code): \(rpcError.message)"
             )
         }
-        negotiatedProtocolVersion = envelope.result?.protocolVersion
+        guard let result = envelope.result else {
+            throw CatalogError.parse(reason: "dm MCP initialize response has no result")
+        }
+        negotiatedProtocolVersion = result.protocolVersion
 
         // Acknowledge the handshake (HTTP 202, empty body expected).
         let notification = baseRequest(
@@ -99,7 +102,7 @@ actor DmMcpCatalogSource: CatalogSource {
             timeout: 5,
             sessionID: sessionID
         )
-        let (_, notificationResponse) = try await loader.load(notification)
+        let (_, notificationResponse) = try await load(notification)
         guard notificationResponse.statusCode == 202 || notificationResponse.statusCode == 200 else {
             throw CatalogError.network(
                 reason: "dm MCP initialized notification answered HTTP \(notificationResponse.statusCode)"
@@ -122,7 +125,7 @@ actor DmMcpCatalogSource: CatalogSource {
             timeout: 8,
             sessionID: sessionID
         )
-        let (data, response) = try await loader.load(request)
+        let (data, response) = try await load(request)
         if response.statusCode == 404 {
             // Expired or unknown session (research doc section 4.3).
             throw DmMcpSessionExpiredError()
@@ -170,6 +173,16 @@ actor DmMcpCatalogSource: CatalogSource {
     }
 
     // MARK: - Transport helpers
+
+    private func load(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
+        do {
+            return try await loader.load(request)
+        } catch let error as CatalogError {
+            throw error
+        } catch {
+            throw CatalogError.network(reason: "catalog transport failed: \(error)")
+        }
+    }
 
     /// The dm server answers POST requests with a Server-Sent Events
     /// body whose single `data:` line carries the JSON-RPC envelope

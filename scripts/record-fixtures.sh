@@ -37,6 +37,17 @@ MCP_JSON_HEADERS=(
   -H "Accept: application/json, text/event-stream"
 )
 
+record_request() {
+  local expected="$1"
+  shift
+  local status
+  status=$(curl -sS --max-time 30 -w "%{http_code}" "$@")
+  if [[ ! " ${expected} " =~ " ${status} " ]]; then
+    echo "error: expected HTTP ${expected} but got ${status}" >&2
+    exit 1
+  fi
+}
+
 # ----------------------------------------------------------------------
 # 1. dm MCP server (official, Streamable HTTP, no auth)
 #    Endpoint and sequence: docs/research/dm-mcp-swift-anbindung.md
@@ -45,7 +56,7 @@ MCP_JSON_HEADERS=(
 # 1.1 initialize: starts the session. The server answers with the
 # Mcp-Session-Id header and an SSE body carrying the JSON-RPC result.
 INIT_BODY='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"'"${MCP_PROTOCOL_VERSION}"'","capabilities":{},"clientInfo":{"name":"private-inventory-fixture-recording","version":"1.0.0"}}}'
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request 200 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -D "${FIXTURE_DIR}/dm_mcp_initialize.headers.txt" \
   -d "${INIT_BODY}" \
   -o "${FIXTURE_DIR}/dm_mcp_initialize.json"
@@ -63,7 +74,7 @@ echo "session: ${SESSION_ID}"
 
 # 1.2 notifications/initialized: acknowledges the handshake (HTTP 202,
 # empty body — nothing to record).
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request "200 202" -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -H "Mcp-Session-Id: ${SESSION_ID}" \
   -H "MCP-Protocol-Version: ${MCP_PROTOCOL_VERSION}" \
   -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -71,7 +82,7 @@ curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
 
 # 1.3 tools/call getProductDetails — known dm product (hit).
 # gtins must be [Int64]; a string fails server-side schema validation.
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request 200 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -H "Mcp-Session-Id: ${SESSION_ID}" \
   -H "MCP-Protocol-Version: ${MCP_PROTOCOL_VERSION}" \
   -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"getProductDetails","arguments":{"gtins":[4066447966008]}}}' \
@@ -80,7 +91,7 @@ echo "recorded dm_mcp_product_hit.json"
 
 # 1.4 tools/call getProductDetails — unknown GTIN (miss: found=false,
 # no error at the JSON-RPC level).
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request 200 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -H "Mcp-Session-Id: ${SESSION_ID}" \
   -H "MCP-Protocol-Version: ${MCP_PROTOCOL_VERSION}" \
   -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"getProductDetails","arguments":{"gtins":[9999999999999]}}}' \
@@ -89,7 +100,7 @@ echo "recorded dm_mcp_product_miss.json"
 
 # 1.5 tools/call with an unknown session id (HTTP 404 "Session not
 # found" — the re-handshake trigger of the Swift client).
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request 404 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -H "Mcp-Session-Id: 00000000000000000000000000000000" \
   -H "MCP-Protocol-Version: ${MCP_PROTOCOL_VERSION}" \
   -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"getProductDetails","arguments":{"gtins":[4066447966008]}}}' \
@@ -98,7 +109,7 @@ echo "recorded dm_mcp_session_expired.json (expect HTTP 404 body)"
 
 # 1.6 tools/call without the session header (HTTP 400 "Missing session
 # ID" — guards the client's invariant that the session is set first).
-curl -sS --max-time 30 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
+record_request 400 -X POST "${MCP_URL}" "${MCP_JSON_HEADERS[@]}" \
   -d '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"getProductDetails","arguments":{"gtins":[4066447966008]}}}' \
   -o "${FIXTURE_DIR}/dm_mcp_session_missing.json"
 echo "recorded dm_mcp_session_missing.json (expect HTTP 400 body)"
@@ -110,14 +121,14 @@ echo "recorded dm_mcp_session_missing.json (expect HTTP 400 body)"
 #    because the client must respect it (ticket #13).
 # ----------------------------------------------------------------------
 
-curl -sS --max-time 30 \
+record_request 200 \
   'https://product-search.services.dmtech.com/de/search/crawl?query=4066447966008&pageSize=5&currentPage=0&type=search-static' \
   -H "User-Agent: ${UA}" \
   -D "${FIXTURE_DIR}/dm_search_product_hit.headers.txt" \
   -o "${FIXTURE_DIR}/dm_search_product_hit.json"
 echo "recorded dm_search_product_hit.{json,headers.txt}"
 
-curl -sS --max-time 30 \
+record_request "200 404" \
   'https://product-search.services.dmtech.com/de/search/crawl?query=9999999999999&pageSize=5&currentPage=0&type=search-static' \
   -H "User-Agent: ${UA}" \
   -D "${FIXTURE_DIR}/dm_search_product_miss.headers.txt" \
@@ -131,25 +142,25 @@ echo "recorded dm_search_product_miss.{json,headers.txt}"
 #    body {"status":0,...}).
 # ----------------------------------------------------------------------
 
-curl -sS --max-time 30 \
+record_request 200 \
   'https://world.openbeautyfacts.org/api/v2/product/80466468.json' \
   -H "User-Agent: ${UA}" \
   -o "${FIXTURE_DIR}/openbeautyfacts_product_hit.json"
 echo "recorded openbeautyfacts_product_hit.json (DOVE deodorant)"
 
-curl -sS --max-time 30 \
+record_request "200 404" \
   'https://world.openbeautyfacts.org/api/v2/product/4066447966008.json' \
   -H "User-Agent: ${UA}" \
   -o "${FIXTURE_DIR}/openbeautyfacts_product_miss.json"
 echo "recorded openbeautyfacts_product_miss.json (expect status:0)"
 
-curl -sS --max-time 30 \
+record_request 200 \
   'https://world.openfoodfacts.org/api/v2/product/3017620422003.json' \
   -H "User-Agent: ${UA}" \
   -o "${FIXTURE_DIR}/openfoodfacts_product_hit.json"
 echo "recorded openfoodfacts_product_hit.json (Nutella)"
 
-curl -sS --max-time 30 \
+record_request "200 404" \
   'https://world.openfoodfacts.org/api/v2/product/4066447966008.json' \
   -H "User-Agent: ${UA}" \
   -o "${FIXTURE_DIR}/openfoodfacts_product_miss.json"

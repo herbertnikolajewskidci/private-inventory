@@ -117,3 +117,20 @@ actor StubURLLoading: URLLoading {
         requests
     }
 }
+
+/// A `URLLoading` stub that throws a custom error, testing that
+/// catalog clients normalize foreign transport errors into
+/// `CatalogError.network`.
+struct FailingURLLoading: URLLoading {
+    struct CustomTransportError: Error, Equatable {}
+
+    let error: any Error
+
+    init(error: any Error = CustomTransportError()) {
+        self.error = error
+    }
+
+    func load(_: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
+        throw error
+    }
+}

@@ -194,4 +194,93 @@ struct DmSearchCatalogSourceTests {
         }
         #expect(await stub.recordedRequests().isEmpty)
     }
+
+    /// An empty GTIN is refused before any network request.
+    ///
+    /// Given: a stub with no recorded responses
+    /// When: resolve(gtin: "")
+    /// Then: CatalogError.invalidGtin is thrown and zero requests were sent
+    @Test func emptyGtinThrowsWithoutNetworkRequest() async throws {
+        // Given
+        let stub = StubURLLoading(responses: [])
+        let source: any CatalogSource = DmSearchCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.invalidGtin(gtin: "")) {
+            try await source.resolve(gtin: "")
+        }
+        #expect(await stub.recordedRequests().isEmpty)
+    }
+
+    /// Decimal or non-integer max-age values in cache-control are rejected.
+    ///
+    /// Given: responses with max-age=1.5 and max-age=345600
+    /// When: cacheTTL is parsed from the response
+    /// Then: max-age=1.5 yields nil; max-age=345600 yields 345600
+    @Test func decimalMaxAgeIsRejectedFromCacheControl() throws {
+        // Given
+        let url = try #require(URL(string: "https://example.com"))
+        let decimalResponse = try #require(HTTPURLResponse(
+            url: url,
+            statusCode: 200,
+            httpVersion: "HTTP/2",
+            headerFields: ["cache-control": "public, max-age=1.5"]
+        ))
+        let validResponse = try #require(HTTPURLResponse(
+            url: url,
+            statusCode: 200,
+            httpVersion: "HTTP/2",
+            headerFields: ["cache-control": "public, max-age=345600"]
+        ))
+
+        // When/Then
+        #expect(DmSearchCatalogSource.cacheTTL(from: decimalResponse) == nil)
+        #expect(DmSearchCatalogSource.cacheTTL(from: validResponse) == 345_600)
+    }
+
+    /// Transport failures thrown by the injected loader are normalized to
+    /// CatalogError.network.
+    ///
+    /// Given: a loader throwing a custom non-CatalogError
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.network is thrown
+    @Test func foreignLoaderErrorIsNormalizedToNetworkError() async throws {
+        // Given
+        let source: any CatalogSource = DmSearchCatalogSource(loader: FailingURLLoading())
+
+        // When/Then
+        do {
+            _ = try await source.resolve(gtin: "4066447966008")
+            Issue.record("expected CatalogError.network")
+        } catch let error as CatalogError {
+            guard case let .network(reason) = error else {
+                Issue.record("expected CatalogError.network, got \(error)")
+                return
+            }
+            #expect(reason.contains("catalog transport failed"))
+        }
+    }
+
+    /// URLSessionURLLoading maps transport errors to CatalogError.network.
+    ///
+    /// Given: an invalid URLRequest that fails immediately without network
+    /// When: URLSessionURLLoading.load(request) is called
+    /// Then: CatalogError.network is thrown
+    @Test func urlSessionURLLoadingMapsTransportErrors() async throws {
+        // Given
+        let loader = URLSessionURLLoading()
+        let request = try URLRequest(url: #require(URL(string: "unsupported-scheme://localhost")))
+
+        // When/Then
+        do {
+            _ = try await loader.load(request)
+            Issue.record("expected CatalogError.network")
+        } catch let error as CatalogError {
+            guard case let .network(reason) = error else {
+                Issue.record("expected CatalogError.network, got \(error)")
+                return
+            }
+            #expect(reason.contains("URLSession transport error"))
+        }
+    }
 }

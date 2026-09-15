@@ -26,11 +26,11 @@ struct DmSearchCatalogSource: CatalogSource {
     }
 
     func resolve(gtin: String) async throws -> ResolvedProduct? {
-        guard gtin.allSatisfy(\.isNumber) else {
+        guard !gtin.isEmpty, gtin.allSatisfy({ $0.isNumber && $0.isASCII }) else {
             throw CatalogError.invalidGtin(gtin: gtin)
         }
         let request = Self.makeRequest(gtin: gtin)
-        let (data, response) = try await loader.load(request)
+        let (data, response) = try await load(request)
         guard response.statusCode == 200 else {
             throw CatalogError.network(reason: "dm search answered HTTP \(response.statusCode)")
         }
@@ -51,6 +51,16 @@ struct DmSearchCatalogSource: CatalogSource {
             source: .search,
             cacheTTL: Self.cacheTTL(from: response)
         )
+    }
+
+    private func load(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
+        do {
+            return try await loader.load(request)
+        } catch let error as CatalogError {
+            throw error
+        } catch {
+            throw CatalogError.network(reason: "catalog transport failed: \(error)")
+        }
     }
 
     // MARK: - Request
@@ -85,7 +95,10 @@ struct DmSearchCatalogSource: CatalogSource {
                 $0.trimmingCharacters(in: .whitespaces)
             }
             guard parts.first?.lowercased() == "max-age",
-                  let seconds = parts.dropFirst().first.flatMap(TimeInterval.init)
+                  let value = parts.dropFirst().first,
+                  !value.isEmpty,
+                  value.allSatisfy({ $0.isNumber && $0.isASCII }),
+                  let seconds = TimeInterval(value)
             else {
                 continue
             }

@@ -28,13 +28,23 @@ struct OBFOffCatalogSource: CatalogSource {
     }
 
     func resolve(gtin: String) async throws -> ResolvedProduct? {
-        guard gtin.allSatisfy(\.isNumber) else {
+        guard !gtin.isEmpty, gtin.allSatisfy({ $0.isNumber && $0.isASCII }) else {
             throw CatalogError.invalidGtin(gtin: gtin)
         }
         if let product = try await lookup(base: Self.openBeautyFactsBase, gtin: gtin) {
             return product
         }
         return try await lookup(base: Self.openFoodFactsBase, gtin: gtin)
+    }
+
+    private func load(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
+        do {
+            return try await loader.load(request)
+        } catch let error as CatalogError {
+            throw error
+        } catch {
+            throw CatalogError.network(reason: "catalog transport failed: \(error)")
+        }
     }
 
     /// One database lookup. Returns `nil` for a clean miss (HTTP 404
@@ -45,15 +55,25 @@ struct OBFOffCatalogSource: CatalogSource {
         request.timeoutInterval = 10
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 
-        let (data, response) = try await loader.load(request)
+        let (data, response) = try await load(request)
         // A miss is HTTP 404 with body {"status":0,...}; both the 200
         // and the 404 are answers, not errors.
         guard response.statusCode == 200 || response.statusCode == 404 else {
             throw CatalogError.network(reason: "\(base.host ?? "unknown host") answered HTTP \(response.statusCode)")
         }
         let payload = try decodeCatalogJSON(OpenFactsResponse.self, from: data)
-        guard payload.status == 1, let product = payload.product else {
+        guard payload.status == 1 else {
             return nil
+        }
+        guard response.statusCode == 200 else {
+            throw CatalogError.parse(
+                reason: "\(base.host ?? "unknown host") answered HTTP \(response.statusCode) with status 1"
+            )
+        }
+        guard let product = payload.product else {
+            throw CatalogError.parse(
+                reason: "\(base.host ?? "unknown host") answered status 1 without product data"
+            )
         }
         guard let name = product.productName, !name.isEmpty else {
             // Found but no usable name: no storable data.

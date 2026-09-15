@@ -24,19 +24,19 @@ enum DmToonParser {
     ///   no data row, or no row matching the requested GTIN.
     static func record(from toon: String, forGtin gtin: String) throws -> Record {
         let lines = toon.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        guard let headerLine = lines.first(where: { $0.contains("{") && $0.contains("}") }) else {
+        guard let headerIndex = lines.firstIndex(where: { $0.contains("{") && $0.contains("}") }) else {
             throw CatalogError.parse(reason: "no TOON header row in the dm result")
         }
+        let headerLine = lines[headerIndex]
         guard let open = headerLine.firstIndex(of: "{"),
-              let close = headerLine.firstIndex(of: "}")
+              let close = headerLine[headerLine.index(after: open)...].firstIndex(of: "}")
         else {
             throw CatalogError.parse(reason: "malformed TOON header row")
         }
         let headers = String(headerLine[headerLine.index(after: open) ..< close])
             .components(separatedBy: "|")
 
-        let dataLines = lines
-            .drop { !$0.contains("{") }
+        let dataLines = lines[lines.index(after: headerIndex)...]
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let records: [Record] = dataLines.map { row in
             var record: Record = [:]
@@ -51,11 +51,11 @@ enum DmToonParser {
         }
 
         // Prefer the row whose gtin column matches the requested GTIN;
-        // fall back to the single row.
+        // fall back to the single row when no gtin column is present.
         if let match = records.first(where: { $0["gtin"] == gtin }) {
             return match
         }
-        if records.count == 1 {
+        if records.count == 1, records[0]["gtin"] == nil {
             return records[0]
         }
         throw CatalogError.parse(reason: "no TOON row matches GTIN \(gtin)")

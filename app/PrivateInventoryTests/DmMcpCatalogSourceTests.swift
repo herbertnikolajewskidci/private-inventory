@@ -14,12 +14,11 @@ struct DmMcpCatalogSourceTests {
     /// initialized notification, then the given tool-call response.
     private func makeStub(toolCall: StubURLLoading.Response) -> StubURLLoading {
         StubURLLoading(responses: [
-            StubURLLoading.Response(
-                statusCode: 200,
-                fixture: "dm_mcp_initialize.json",
+            .init(
+                statusCode: 200, fixture: "dm_mcp_initialize.json",
                 headers: ["mcp-session-id": Self.recordedSessionID]
             ),
-            StubURLLoading.Response(statusCode: 202, body: ""),
+            .init(statusCode: 202, body: ""),
             toolCall
         ])
     }
@@ -121,8 +120,7 @@ struct DmMcpCatalogSourceTests {
     @Test func expiredSessionIsReinitializedOnce() async throws {
         // Given
         let initialize = StubURLLoading.Response(
-            statusCode: 200,
-            fixture: "dm_mcp_initialize.json",
+            statusCode: 200, fixture: "dm_mcp_initialize.json",
             headers: ["mcp-session-id": Self.recordedSessionID]
         )
         let stub = StubURLLoading(responses: [
@@ -243,6 +241,70 @@ struct DmMcpCatalogSourceTests {
         #expect(await stub.recordedRequests().isEmpty)
     }
 
+    /// Signed and empty GTINs are refused before any network request.
+    ///
+    /// Given: a stub with no responses
+    /// When: resolve(gtin:) with "-1" or ""
+    /// Then: CatalogError.invalidGtin is thrown and zero requests sent
+    @Test func signedAndEmptyGtinsThrowWithoutNetworkRequest() async throws {
+        // Given
+        let stub = StubURLLoading(responses: [])
+        let source: any CatalogSource = DmMcpCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.invalidGtin(gtin: "-1")) {
+            try await source.resolve(gtin: "-1")
+        }
+        await #expect(throws: CatalogError.invalidGtin(gtin: "")) {
+            try await source.resolve(gtin: "")
+        }
+        #expect(await stub.recordedRequests().isEmpty)
+    }
+
+    /// An initialize response without result and error is a parse error.
+    ///
+    /// Given: an initialize response containing neither result nor error
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.parse is thrown
+    @Test func initializeWithoutResultOrErrorThrowsParseError() async throws {
+        // Given: valid session header but envelope without result or error
+        let stub = StubURLLoading(responses: [
+            .init(
+                statusCode: 200, body: "data: {\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
+                headers: ["mcp-session-id": Self.recordedSessionID]
+            )
+        ])
+        let source: any CatalogSource = DmMcpCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.parse(reason: "dm MCP initialize response has no result")) {
+            try await source.resolve(gtin: "4066447966008")
+        }
+    }
+
+    /// Transport failures thrown by the injected loader are normalized to
+    /// CatalogError.network.
+    ///
+    /// Given: a loader throwing a custom non-CatalogError
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.network is thrown
+    @Test func foreignLoaderErrorIsNormalizedToNetworkError() async throws {
+        // Given
+        let source: any CatalogSource = DmMcpCatalogSource(loader: FailingURLLoading())
+
+        // When/Then
+        do {
+            _ = try await source.resolve(gtin: "4066447966008")
+            Issue.record("expected CatalogError.network")
+        } catch let error as CatalogError {
+            guard case let .network(reason) = error else {
+                Issue.record("expected CatalogError.network, got \(error)")
+                return
+            }
+            #expect(reason.contains("catalog transport failed"))
+        }
+    }
+
     // MARK: - TOON parser (direct)
 
     /// A TOON table with several rows yields the row of the requested
@@ -275,17 +337,63 @@ struct DmMcpCatalogSourceTests {
     /// When: the row is parsed
     /// Then: the productName holds the restored double quotes
     @Test func toonParsingRestoresEscapedQuotes() throws {
-        // Given: in a Swift multi-line string the backslashes are
-        // literal, so this is exactly the TOON wire format
-        let table = """
+        // Given: in a raw Swift multi-line string the backslashes are
+        // literal, matching the TOON wire format
+        let table = #"""
         [1]{gtin|productName}:
           123|"Heute \"Sonnenschein\""
-        """
+        """#
 
         // When
         let record = try DmToonParser.record(from: table, forGtin: "123")
 
         // Then
         #expect(record["productName"] == #"Heute "Sonnenschein""#)
+    }
+
+    /// Malformed header rows where closing brace precedes opening brace
+    /// throw a parse error without crashing.
+    ///
+    /// Given: a malformed header "} {"
+    /// When: record(from:forGtin:)
+    /// Then: CatalogError.parse is thrown without a range crash
+    @Test func malformedHeaderBraceOrderThrowsParseError() throws {
+        // Given/When/Then
+        #expect(throws: CatalogError.self) {
+            try DmToonParser.record(from: "} {", forGtin: "4066447966008")
+        }
+    }
+
+    /// An empty TOON table with only a header line throws a parse error.
+    ///
+    /// Given: a TOON table with a header line but no data rows
+    /// When: record(from:forGtin:)
+    /// Then: CatalogError.parse with reason containing "no data row" is thrown
+    @Test func emptyTableThrowsParseError() throws {
+        // Given
+        let table = "[1]{gtin|productName}:"
+
+        // When/Then
+        #expect(throws: CatalogError.parse(reason: "no data row in the TOON table")) {
+            try DmToonParser.record(from: table, forGtin: "4066447966008")
+        }
+    }
+
+    /// A single row whose GTIN does not match throws a parse error.
+    ///
+    /// Given: a single-row TOON table with GTIN 111
+    /// When: record(from:forGtin: "222")
+    /// Then: CatalogError.parse with reason "no TOON row matches GTIN 222" is thrown
+    @Test func singleNonMatchingRowThrowsParseError() throws {
+        // Given
+        let table = """
+        [1]{gtin|productName}:
+          111|Product A
+        """
+
+        // When/Then
+        #expect(throws: CatalogError.parse(reason: "no TOON row matches GTIN 222")) {
+            try DmToonParser.record(from: table, forGtin: "222")
+        }
     }
 }

@@ -23,7 +23,15 @@ struct URLSessionURLLoading: URLLoading {
     }
 
     func load(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as CatalogError {
+            throw error
+        } catch {
+            throw CatalogError.network(reason: "URLSession transport error: \(error)")
+        }
         guard let http = response as? HTTPURLResponse else {
             throw CatalogError.network(reason: "the response is not an HTTP response")
         }
