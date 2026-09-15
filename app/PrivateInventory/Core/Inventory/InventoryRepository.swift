@@ -57,4 +57,9 @@ protocol InventoryRepository {
     /// yet). Throws `InventoryError.missingParent` when the location
     /// does not exist.
     func recordUnresolvedScan(_ scan: UnresolvedScan) throws -> UnresolvedScan
+
+    /// Removes an UnresolvedScan from the queue (after it was
+    /// resolved and booked, ticket #14). Deleting an unknown id is
+    /// not an error.
+    func deleteUnresolvedScan(id: UUID) throws
 }

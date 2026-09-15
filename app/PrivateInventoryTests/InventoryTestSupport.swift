@@ -5,6 +5,8 @@ import GRDB
 /// Test support: a fresh in-memory inventory database per test, plus
 /// sample values.
 struct TestInventory {
+    /// The in-memory database (all migrations applied).
+    let database: InventoryDatabase
     /// The GRDB connection of the in-memory database.
     let queue: DatabaseQueue
     /// The repository under test.
@@ -13,6 +15,7 @@ struct TestInventory {
     /// A fresh in-memory database with all migrations applied.
     init() throws {
         let database = try InventoryDatabase.makeInMemory()
+        self.database = database
         queue = database.queue
         repository = GRDBInventoryRepository(database: database)
     }

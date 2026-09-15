@@ -57,6 +57,25 @@ enum InventoryMigrations {
             try Location(name: "Vorratsschrank").insert(database)
         }
 
+        // Catalog cache (ADR-0002, ticket #14): resolved product data
+        // and negative entries, keyed by GTIN. The cache is
+        // independent of the product table, so no foreign keys.
+        migrator.registerMigration("0003_catalog_cache") { database in
+            try database.create(table: "catalog_entry") { table in
+                table.column("id", .text).notNull().primaryKey()
+                // One cache entry per GTIN, positive or negative.
+                table.column("gtin", .text).notNull().unique()
+                // NULL for negative entries.
+                table.column("name", .text)
+                table.column("brand", .text)
+                table.column("imageURL", .text)
+                table.column("source", .text)
+                table.column("resolvedAt", .datetime).notNull()
+                table.column("expiresAt", .datetime).notNull()
+                table.column("isNegative", .boolean).notNull()
+            }
+        }
+
         return migrator
     }
 }

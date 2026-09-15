@@ -131,6 +131,16 @@ struct GRDBInventoryRepository: InventoryRepository {
         }
     }
 
+    func deleteUnresolvedScan(id: UUID) throws {
+        // Deleting a nonexistent id is not an error (0 or 1 rows
+        // affected are both success).
+        try queue.write { database in
+            _ = try UnresolvedScan
+                .filter(Column("id") == id.uuidString)
+                .deleteAll(database)
+        }
+    }
+
     // MARK: - Helpers
 
     /// The StockLevel for exactly one product and location, if any.
