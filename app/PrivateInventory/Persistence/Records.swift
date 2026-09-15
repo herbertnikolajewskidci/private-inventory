@@ -47,3 +47,13 @@ extension UnresolvedScan: FetchableRecord, PersistableRecord {
         .uppercaseString
     }
 }
+
+extension CatalogCacheEntry: FetchableRecord, PersistableRecord {
+    static let databaseTableName = "catalog_entry"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
+}

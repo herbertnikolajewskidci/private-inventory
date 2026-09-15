@@ -103,4 +103,118 @@ struct InventoryMigrationsTests {
             }
         }
     }
+
+    /// The 0004 rebuild of unresolved_scan carries valid rows over
+    /// unchanged (CodeRabbit finding, ticket #14: the CHECK
+    /// constraint is added by rebuilding the table).
+    ///
+    /// Given: a database migrated up to 0003 that holds one
+    /// unresolved scan
+    /// When: the remaining migrations run ("app update")
+    /// Then: the scan is still there with all its fields
+    @Test func quantityCheckMigrationCarriesValidScansOver() throws {
+        // Given: a file database migrated up to 0003 with one scan
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("private-inventory-tests")
+        try FileManager.default.createDirectory(
+            at: directoryURL, withIntermediateDirectories: true
+        )
+        let fileURL = directoryURL.appendingPathComponent("\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let queue = try DatabaseQueue(path: fileURL.path)
+        try InventoryMigrations.migrator.migrate(queue, upTo: "0003_catalog_cache")
+        let cellarID = try queue.write { database in
+            try String.fetchOne(
+                database,
+                sql: "SELECT id FROM location WHERE name = 'Keller'"
+            )
+        }
+        let scanID = UUID().uuidString
+        try queue.write { database in
+            try database.execute(
+                sql: """
+                INSERT INTO unresolved_scan (id, gtin, locationID, quantity, createdAt)
+                VALUES (?, '0000000000000', ?, 2, ?)
+                """,
+                arguments: [scanID, cellarID, Date(timeIntervalSince1970: 1_700_000_000)]
+            )
+        }
+
+        // When: the "app update" runs the remaining migrations
+        try InventoryMigrations.migrator.migrate(queue)
+
+        // Then: the scan survived the rebuild with all fields intact
+        let restored = try queue.read { database in
+            try Row.fetchOne(
+                database,
+                sql: "SELECT * FROM unresolved_scan WHERE id = ?",
+                arguments: [scanID]
+            )
+        }
+        let row = try #require(restored)
+        #expect(row["gtin"] as String == "0000000000000")
+        #expect(row["quantity"] as Int == 2)
+        #expect(
+            (row["createdAt"] as Date) == Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    /// The 0004 rebuild discards invalid legacy rows instead of
+    /// failing: a pre-0004 database can hold negative quantities
+    /// (nothing validated them before), and copying them into the
+    /// constrained table would abort the migration and block the
+    /// database from opening (CodeRabbit finding, ticket #14).
+    ///
+    /// Given: a database migrated up to 0003 that holds one valid
+    /// and one negative-quantity unresolved scan
+    /// When: the remaining migrations run ("app update")
+    /// Then: the migration succeeds, the valid scan is carried over,
+    /// the negative one is discarded
+    @Test func quantityCheckMigrationDiscardsInvalidLegacyRows() throws {
+        // Given: a file database migrated up to 0003 with one valid
+        // and one negative-quantity scan
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("private-inventory-tests")
+        try FileManager.default.createDirectory(
+            at: directoryURL, withIntermediateDirectories: true
+        )
+        let fileURL = directoryURL.appendingPathComponent("\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let queue = try DatabaseQueue(path: fileURL.path)
+        try InventoryMigrations.migrator.migrate(queue, upTo: "0003_catalog_cache")
+        let cellarID = try queue.write { database in
+            try String.fetchOne(
+                database,
+                sql: "SELECT id FROM location WHERE name = 'Keller'"
+            )
+        }
+        try queue.write { database in
+            try database.execute(
+                sql: """
+                INSERT INTO unresolved_scan (id, gtin, locationID, quantity, createdAt)
+                VALUES (?, '0000000000000', ?, 2, ?),
+                       (?, '0000000000000', ?, -1, ?)
+                """,
+                arguments: [
+                    UUID().uuidString, cellarID, Date(timeIntervalSince1970: 1_700_000_000),
+                    UUID().uuidString, cellarID, Date(timeIntervalSince1970: 1_700_000_001)
+                ]
+            )
+        }
+
+        // When: the "app update" runs the remaining migrations (this
+        // must not fail on the negative legacy row)
+        try InventoryMigrations.migrator.migrate(queue)
+
+        // Then: the valid scan survived, the negative one is gone
+        let scans = try queue.read { database in
+            try Row.fetchAll(database, sql: "SELECT * FROM unresolved_scan")
+        }
+        #expect(scans.count == 1)
+        let row = try #require(scans.first)
+        #expect(row["gtin"] as String == "0000000000000")
+        #expect(row["quantity"] as Int == 2)
+    }
 }

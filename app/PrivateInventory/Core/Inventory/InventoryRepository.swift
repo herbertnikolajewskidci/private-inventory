@@ -57,4 +57,23 @@ protocol InventoryRepository {
     /// yet). Throws `InventoryError.missingParent` when the location
     /// does not exist.
     func recordUnresolvedScan(_ scan: UnresolvedScan) throws -> UnresolvedScan
+
+    /// Removes an UnresolvedScan from the queue (after it was
+    /// resolved and booked, ticket #14). Deleting an unknown id is
+    /// not an error.
+    func deleteUnresolvedScan(id: UUID) throws
+
+    /// Einbuchen for a queued UnresolvedScan (ticket #14): books the
+    /// scan's full quantity at the scan's location in the StockLevel
+    /// of `productID` (creating it when missing), then removes the
+    /// scan from the queue — all in ONE transaction, so a scan is
+    /// either fully booked and gone, or untouched (never partially
+    /// booked; a retry cannot double-book).
+    ///
+    /// Throws `InventoryError.missingParent` when the product does
+    /// not exist or the scan was already booked and removed (e.g.
+    /// by a concurrent queue run). Concurrent runs are serialized by
+    /// the store: each run re-verifies inside its transaction that
+    /// the scan still exists.
+    func bookUnresolvedScan(scanID: UUID, productID: UUID) throws -> StockLevel
 }

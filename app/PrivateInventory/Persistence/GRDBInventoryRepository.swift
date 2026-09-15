@@ -131,6 +131,41 @@ struct GRDBInventoryRepository: InventoryRepository {
         }
     }
 
+    func deleteUnresolvedScan(id: UUID) throws {
+        // Deleting a nonexistent id is not an error (0 or 1 rows
+        // affected are both success).
+        try queue.write { database in
+            _ = try UnresolvedScan
+                .filter(Column("id") == id.uuidString)
+                .deleteAll(database)
+        }
+    }
+
+    func bookUnresolvedScan(scanID: UUID, productID: UUID) throws -> StockLevel {
+        try queue.write { database in
+            // The scan must still exist: a concurrent queue run may
+            // have already booked and removed it. Everything below
+            // (book + delete) commits as ONE transaction.
+            guard let scan = try UnresolvedScan
+                .filter(Column("id") == scanID.uuidString)
+                .fetchOne(database)
+            else {
+                throw InventoryError.missingParent
+            }
+            try requireProduct(database, productID)
+
+            var level = try level(database, productID: productID, locationID: scan.locationID)
+                ?? StockLevel(productID: productID, locationID: scan.locationID)
+            for _ in 0 ..< scan.quantity {
+                level.scanIn()
+            }
+            try level.save(database)
+
+            try scan.delete(database)
+            return level
+        }
+    }
+
     // MARK: - Helpers
 
     /// The StockLevel for exactly one product and location, if any.
