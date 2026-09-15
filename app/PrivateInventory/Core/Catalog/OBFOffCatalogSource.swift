@@ -49,7 +49,8 @@ struct OBFOffCatalogSource: CatalogSource {
 
     /// One database lookup. Returns `nil` for a clean miss (HTTP 404
     /// with `status:0`, or `status:0` on any status); throws a
-    /// `CatalogError` for transport and parse failures.
+    /// `CatalogError` for transport, parse failures, and unsupported
+    /// status codes (server-side errors must not look like misses).
     private func lookup(base: URL, gtin: String) async throws -> ResolvedProduct? {
         var request = URLRequest(url: base.appendingPathComponent("api/v2/product/\(gtin).json"))
         request.timeoutInterval = 10
@@ -62,8 +63,19 @@ struct OBFOffCatalogSource: CatalogSource {
             throw CatalogError.network(reason: "\(base.host ?? "unknown host") answered HTTP \(response.statusCode)")
         }
         let payload = try decodeCatalogJSON(OpenFactsResponse.self, from: data)
-        guard payload.status == 1 else {
-            return nil
+        switch payload.status {
+        case 0:
+            return nil // clean miss
+        case 1:
+            break // found path
+        default:
+            // Any other code (2, -1, 99, ...) is a server-side error
+            // or unknown: a parse failure, not a clean miss, so the
+            // caller does not fall back and waste the next call on a
+            // degraded source.
+            throw CatalogError.parse(
+                reason: "\(base.host ?? "unknown host") answered unsupported status \(payload.status)"
+            )
         }
         guard response.statusCode == 200 else {
             throw CatalogError.parse(
@@ -92,7 +104,8 @@ struct OBFOffCatalogSource: CatalogSource {
 // MARK: - Response format (see the recorded fixtures)
 
 private struct OpenFactsResponse: Decodable {
-    /// 1 = product found, 0 = product not found (HTTP 404).
+    /// 1 = product found, 0 = product not found (HTTP 404). Any other
+    /// value is an unsupported code and a parse error.
     let status: Int
     let product: OpenFactsProduct?
 }

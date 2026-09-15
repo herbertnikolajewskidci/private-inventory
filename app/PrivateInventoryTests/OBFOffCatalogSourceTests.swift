@@ -117,6 +117,29 @@ struct OBFOffCatalogSourceTests {
         #expect(await stub.recordedRequests().count == 1)
     }
 
+    /// An unsupported status code is a parse error, not a clean miss.
+    ///
+    /// Given: OBF answered HTTP 200 with a body whose status is 2
+    /// (a server-side error code, not 0 = miss or 1 = found)
+    /// When: resolve(gtin:)
+    /// Then: CatalogError.parse is thrown and exactly one request
+    /// was sent — OFF is not asked, because an upstream problem must
+    /// not be hidden as a miss (and the OFF call not burned)
+    @Test func unsupportedStatusCodeThrowsParseErrorWithoutFallback() async throws {
+        // Given
+        let body = #"{"code":"3017620422003","status":2,"status_verbose":"unknown"}"#
+        let stub = StubURLLoading(responses: [
+            .init(statusCode: 200, body: body)
+        ])
+        let source: any CatalogSource = OBFOffCatalogSource(loader: stub)
+
+        // When/Then
+        await #expect(throws: CatalogError.parse(reason: "world.openbeautyfacts.org answered unsupported status 2")) {
+            try await source.resolve(gtin: "3017620422003")
+        }
+        #expect(await stub.recordedRequests().count == 1)
+    }
+
     /// A malformed OBF response is a parse error (and OFF is not
     /// asked — a parse failure is not a miss).
     ///
