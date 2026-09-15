@@ -23,14 +23,15 @@ struct CatalogCacheTests {
     @Test func positiveEntryRoundTripsThroughGrdb() throws {
         // Given
         let (_, cache) = try makeCache()
-        let entry = CatalogCacheEntry.positive(
+        let entry = CatalogCacheEntry(
             gtin: gtin,
             name: "Mehl",
             brand: "Mühle",
             imageURL: URL(string: "https://example.com/mehl.png"),
             source: .mcp,
             resolvedAt: resolvedAt,
-            expiresAt: resolvedAt.addingTimeInterval(3600)
+            expiresAt: resolvedAt.addingTimeInterval(3600),
+            isNegative: false
         )
 
         // When
@@ -98,14 +99,15 @@ struct CatalogCacheTests {
     @Test func storingSameGtinReplacesExistingEntry() throws {
         // Given
         let (inventory, cache) = try makeCache()
-        let positive = CatalogCacheEntry.positive(
+        let positive = CatalogCacheEntry(
             gtin: gtin,
             name: "Mehl",
             brand: "Mühle",
             imageURL: nil,
             source: .mcp,
             resolvedAt: resolvedAt,
-            expiresAt: resolvedAt.addingTimeInterval(3600)
+            expiresAt: resolvedAt.addingTimeInterval(3600),
+            isNegative: false
         )
         try cache.store(positive)
 
@@ -141,14 +143,15 @@ struct CatalogCacheTests {
     @Test func replacingEntryKeepsRowIdentity() throws {
         // Given
         let (_, cache) = try makeCache()
-        let first = CatalogCacheEntry.positive(
+        let first = CatalogCacheEntry(
             gtin: gtin,
             name: "Mehl",
             brand: "Mühle",
             imageURL: nil,
             source: .mcp,
             resolvedAt: resolvedAt,
-            expiresAt: resolvedAt.addingTimeInterval(3600)
+            expiresAt: resolvedAt.addingTimeInterval(3600),
+            isNegative: false
         )
         try cache.store(first)
 

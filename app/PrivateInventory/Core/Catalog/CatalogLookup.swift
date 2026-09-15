@@ -98,24 +98,32 @@ struct CatalogLookup {
                 // this GTIN; suppress the re-lookup entirely.
                 return nil
             }
-            if let name = entry.name, let brand = entry.brand,
-               let source = entry.source
-            {
-                return ResolvedProduct(
-                    gtin: gtin,
-                    name: name,
-                    brand: brand,
-                    imageURL: entry.imageURL,
-                    source: source,
-                    cacheTTL: nil
-                )
+            guard let name = entry.name, let brand = entry.brand,
+                  let source = entry.source
+            else {
+                // Defensive: a positive entry must carry product
+                // data. A corrupt entry is treated as a miss so the
+                // chain can fix it.
+                return try await resolveFromSources(gtin: gtin)
             }
-            // Defensive: a positive entry must carry product data.
-            // A corrupt entry is treated as a miss so the chain can
-            // fix it.
+            return ResolvedProduct(
+                gtin: gtin,
+                name: name,
+                brand: brand,
+                imageURL: entry.imageURL,
+                source: source,
+                cacheTTL: nil
+            )
         }
 
         // Cache miss or expired entry: run the source chain.
+        return try await resolveFromSources(gtin: gtin)
+    }
+
+    /// The fallback chain of the resolver, extracted from
+    /// `resolve(gtin:)` for readability (the cache-first path is the
+    /// short half of the orchestrator).
+    private func resolveFromSources(gtin: String) async throws -> ResolvedProduct? {
         let resolvedAt = now()
         var lastError: (any Error)?
         var gotCleanAnswer = false
@@ -125,12 +133,8 @@ struct CatalogLookup {
                 let product = try await source.resolve(gtin: gtin)
                 if let product {
                     try cache.store(
-                        CatalogCacheEntry.positive(
-                            gtin: gtin,
-                            name: product.name,
-                            brand: product.brand,
-                            imageURL: product.imageURL,
-                            source: product.source,
+                        CatalogCacheEntry(
+                            resolvedProduct: product,
                             resolvedAt: resolvedAt,
                             expiresAt: resolvedAt
                                 + (product.cacheTTL ?? Self.positiveTTLFallback)

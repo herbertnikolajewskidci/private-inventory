@@ -26,10 +26,10 @@ struct GRDBCatalogCache: CatalogCache {
         try queue.write { database in
             // Fetch + replace, the plain style of the repository
             // layer. The row identity is kept on replacement.
-            if let existing = try CatalogCacheEntry
+            let existing = try CatalogCacheEntry
                 .filter(Column("gtin") == entry.gtin)
                 .fetchOne(database)
-            {
+            if let existing {
                 // Replace the row, keeping its identity (the row's
                 // id is a `let`, so rebuild the entry with it).
                 let replaced = CatalogCacheEntry(

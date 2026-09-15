@@ -92,3 +92,35 @@ final class TestClock: @unchecked Sendable {
         lock.withLock { date = date.addingTimeInterval(interval) }
     }
 }
+
+/// A harness for `CatalogLookup` tests: an in-memory GRDB cache on
+/// a fresh inventory database, stub sources and a controllable
+/// clock (no network, no real time).
+struct CatalogLookupHarness {
+    /// The sample GTIN the tests resolve.
+    static let gtin = "4000000000001"
+    /// The start of test time (the clock the harness starts at).
+    static let startTime = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// The catalog cache under the lookup.
+    let cache: GRDBCatalogCache
+    /// The lookup orchestrator under test.
+    let lookup: CatalogLookup
+    /// The clock the lookup reads; advance it to test expiry.
+    let clock: TestClock
+    /// The inventory repository behind the lookup (queue tests).
+    let repository: GRDBInventoryRepository
+
+    init(sources: [StubCatalogSource], clock: TestClock = TestClock(startTime)) throws {
+        let inventory = try TestInventory()
+        cache = GRDBCatalogCache(database: inventory.database)
+        self.clock = clock
+        repository = inventory.repository
+        lookup = CatalogLookup(
+            cache: cache,
+            sources: sources,
+            repository: repository,
+            now: { clock.current }
+        )
+    }
+}

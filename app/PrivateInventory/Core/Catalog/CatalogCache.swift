@@ -27,6 +27,14 @@ struct CatalogCacheEntry: Equatable, Codable, Sendable {
     /// Whether this entry is a cached not-found.
     var isNegative: Bool
 
+    /// The designated initializer: a positive or negative entry with
+    /// all fields set explicitly (the `positive`/`negative` factories
+    /// below are the readable paths).
+    ///
+    /// The parameter count is deliberate: a data-row initializer
+    /// mirrors the table columns 1:1, and bundling the fields into
+    /// parameter objects would hide, not reduce, the shape.
+    /// swiftlint:disable:next function_parameter_count
     init(
         id: UUID = UUID(),
         gtin: String,
@@ -49,28 +57,37 @@ struct CatalogCacheEntry: Equatable, Codable, Sendable {
         self.isNegative = isNegative
     }
 
-    /// A positive entry: product data from a catalog source.
-    static func positive(
-        gtin: String,
-        name: String,
-        brand: String,
-        imageURL: URL?,
-        source: ProductSource,
+    /// A positive entry built from the product data a source
+    /// resolved (the conversion the lookup orchestrator performs).
+    ///
+    /// - Parameters:
+    ///   - resolvedProduct: the product data of the resolving source.
+    ///   - resolvedAt: when the resolution happened (the injected
+    ///     clock of the orchestrator).
+    ///   - expiresAt: when the entry expires — `resolvedAt` plus the
+    ///     source's `cacheTTL` or the fallback TTL.
+    init(
+        resolvedProduct: ResolvedProduct,
         resolvedAt: Date,
         expiresAt: Date
-    ) -> CatalogCacheEntry {
-        CatalogCacheEntry(
-            gtin: gtin,
-            name: name,
-            brand: brand,
-            imageURL: imageURL,
-            source: source,
+    ) {
+        self.init(
+            gtin: resolvedProduct.gtin,
+            name: resolvedProduct.name,
+            brand: resolvedProduct.brand,
+            imageURL: resolvedProduct.imageURL,
+            source: resolvedProduct.source,
             resolvedAt: resolvedAt,
             expiresAt: expiresAt,
             isNegative: false
         )
     }
 
+    /// A positive entry from a resolved product: the conversion the
+    /// lookup orchestrator performs when a source answered (the
+    /// expiry is computed by the caller, from `cacheTTL` or the
+    /// fallback).
+    ///
     /// A negative entry: no source has data for this GTIN.
     ///
     /// Caching the not-found is what suppresses re-lookups of
