@@ -1,10 +1,10 @@
 import PhotosUI
 import SwiftUI
 
-/// The photo-recognition sheet (ticket #24, D3a/D4a): capture a
-/// photo (camera or library), OCR it, edit the query, confirm a
-/// candidate — or fall back to the manual form. Presented by
-/// `QueueTabView` in a sheet.
+/// The photo-recognition sheet (ticket #24, D3a/D4a; ticket #26,
+/// D1b): capture a photo (camera or library), OCR it, adjust the
+/// query chips, confirm a candidate — or fall back to the manual
+/// form. Presented by `QueueTabView` in a sheet.
 struct PhotoRecognitionView: View {
     let scannedGTIN: String
     let recognizer: any TextRecognizer
@@ -17,6 +17,8 @@ struct PhotoRecognitionView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showCamera = false
     @State private var showManualForm = false
+    /// Free-text term for the next custom chip (ticket #26, D4b).
+    @State private var newTerm: String = ""
 
     @Environment(\.dismiss) private var dismiss
 
@@ -104,8 +106,14 @@ struct PhotoRecognitionView: View {
             #if targetEnvironment(simulator) && DEBUG
                 Button("OCR simulieren") {
                     Task {
-                        model.searchQuery = "Balea MEN Golden Intense Deospray"
-                        await model.search()
+                        await model.applyRecognized(lines: [
+                            RecognizedLine(text: "Balea MEN", confidence: 0.9),
+                            RecognizedLine(
+                                text: "Golden Intense Deospray", confidence: 0.9
+                            ),
+                            RecognizedLine(text: "200 ml", confidence: 0.9),
+                            RecognizedLine(text: "1,95 €", confidence: 0.9)
+                        ])
                     }
                 }
             #endif
@@ -122,12 +130,7 @@ struct PhotoRecognitionView: View {
 
     private func candidates(_ matches: [ResolvedProduct]) -> some View {
         VStack(spacing: 12) {
-            TextField("Suchbegriff", text: $model.searchQuery)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-            Button("Erneut suchen") {
-                Task { await model.search() }
-            }
+            queryEditor
             List(matches, id: \.gtin) { candidate in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(candidate.name)
@@ -151,12 +154,7 @@ struct PhotoRecognitionView: View {
 
     private var noMatches: some View {
         VStack(spacing: 12) {
-            TextField("Suchbegriff", text: $model.searchQuery)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-            Button("Erneut suchen") {
-                Task { await model.search() }
-            }
+            queryEditor
             Text("Keine Treffer. Produkt manuell anlegen?")
             Button("Manuell anlegen") {
                 showManualForm = true
@@ -168,11 +166,89 @@ struct PhotoRecognitionView: View {
     private func failed(_ message: String) -> some View {
         VStack(spacing: 12) {
             Text(message)
-            Button("Erneut suchen") {
+            Button("Suchen") {
                 Task { await model.search() }
             }
         }
         .padding()
+    }
+
+    // MARK: Query editor (ticket #26, D1b/D4b)
+
+    /// The shared query editor (ticket #26, D1b): the recognized
+    /// lines (plus user-added terms) as toggle chips, the free-text
+    /// entry (D4b) and the search button. Used in the candidates and
+    /// the noMatches phase.
+    private var queryEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView {
+                FlowLayout(spacing: 8) {
+                    ForEach(model.chips) { chip in
+                        chipButton(chip)
+                    }
+                    if model.chips.isEmpty {
+                        Text("Keine Zeilen erkannt.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .frame(maxHeight: 200)
+            HStack(spacing: 8) {
+                TextField("Begriff hinzufügen", text: $newTerm)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .onSubmit(addTerm)
+                Button {
+                    addTerm()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .disabled(
+                    newTerm.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    ).isEmpty
+                )
+                .accessibilityLabel("Begriff hinzufügen")
+            }
+            Button("Suchen") {
+                Task { await model.search() }
+            }
+        }
+    }
+
+    private func addTerm() {
+        model.addCustomTerm(newTerm)
+        newTerm = ""
+    }
+
+    private func chipButton(_ chip: QueryChip) -> some View {
+        let isSelected = model.selected.contains(chip.id)
+        return Button {
+            model.toggleChip(chip.id)
+        } label: {
+            HStack(spacing: 4) {
+                if chip.isCustom {
+                    Image(systemName: "pencil")
+                }
+                if isSelected {
+                    Image(systemName: "checkmark")
+                }
+                Text(chip.text)
+            }
+            .font(.callout)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule().fill(
+                    isSelected
+                        ? Color.accentColor.opacity(0.2)
+                        : Color(.secondarySystemFill)
+                )
+            )
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isSelected ? Color.primary : Color.secondary)
     }
 
     private func booked(_ product: Product, _ bookedRows: Int) -> some View {

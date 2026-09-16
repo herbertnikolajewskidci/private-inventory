@@ -681,36 +681,53 @@
         }
       }
     },
-    "Suchbegriff": {
+    "Suchen": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suchbegriff"
+            "value": "Suchen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search term"
+            "value": "Search"
           }
         }
       }
     },
-    "Erneut suchen": {
+    "Begriff hinzufügen": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erneut suchen"
+            "value": "Begriff hinzufügen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search again"
+            "value": "Add term"
+          }
+        }
+      }
+    },
+    "Keine Zeilen erkannt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Zeilen erkannt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No lines recognized."
           }
         }
       }
