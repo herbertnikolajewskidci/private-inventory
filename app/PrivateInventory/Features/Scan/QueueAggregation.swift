@@ -19,7 +19,9 @@ struct AggregatedQueueRow: Equatable, Identifiable {
 /// (lastScannedAt desc, tie-break gtin asc). Location names from
 /// `locations`; unknown location id → localized fallback name.
 func aggregateUnresolvedScans(_ scans: [UnresolvedScan], locations: [Location]) -> [AggregatedQueueRow] {
-    let nameByID = Dictionary(uniqueKeysWithValues: locations.map { ($0.id, $0.name) })
+    // Defensive: uniquing keeps a duplicate id from crashing (the store
+    // enforces uniqueness, but this is display code, not the store).
+    let nameByID = Dictionary(locations.map { ($0.id, $0.name) }, uniquingKeysWith: { current, _ in current })
 
     struct Group {
         let gtin: String
@@ -46,7 +48,7 @@ func aggregateUnresolvedScans(_ scans: [UnresolvedScan], locations: [Location]) 
             AggregatedQueueRow(
                 gtin: group.gtin,
                 locationID: group.locationID,
-                locationName: nameByID[group.locationID] ?? "Unbekannt",
+                locationName: nameByID[group.locationID] ?? String(localized: "Unbekannt"),
                 count: group.count,
                 lastScannedAt: group.lastScannedAt
             )

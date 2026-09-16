@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import UIKit
 
 /// One passive stock hint for another location (scan overlay, ADR-0003).
@@ -17,7 +18,9 @@ struct ScanOverlay: Identifiable, Equatable {
         case booked(
             productName: String,
             gtin: String,
-            sourceLabelKey: String,
+            // Catalog key (String Catalog): localized at render time by
+            // the `Text(LocalizedStringKey)` overload.
+            sourceLabel: LocalizedStringKey,
             before: Int,
             after: Int,
             otherStock: [OtherLocationStock]
@@ -232,7 +235,7 @@ final class ScanTabModel {
                 content: .booked(
                     productName: product.name,
                     gtin: product.gtin,
-                    sourceLabelKey: sourceLabelKey(for: product.source),
+                    sourceLabel: sourceLabel(for: product.source),
                     before: stockLevel.quantity - 1,
                     after: stockLevel.quantity,
                     otherStock: otherStock
@@ -244,10 +247,25 @@ final class ScanTabModel {
     }
 
     private func locationName(for id: UUID) -> String {
-        locations.first { $0.id == id }?.name ?? "Unbekannt"
+        locations.first { $0.id == id }?.name ?? String(localized: "Unbekannt")
     }
 
-    private static func sourceLabelKey(for source: ProductSource) -> String {
+    /// Re-derives the cached permission state (scene-phase changes: the
+    /// user can grant/deny the camera permission in Settings and come
+    /// back — the flow must not dead-end in a stale state).
+    func refreshPermissionState() {
+        permissionState = scanner.permissionState
+    }
+
+    /// Ends the open scan window if any (tab switch: recognition must
+    /// not continue invisibly in the background).
+    func stopScanWindow() {
+        guard isScanning else { return }
+        scanner.stop()
+        isScanning = false
+    }
+
+    private static func sourceLabel(for source: ProductSource) -> LocalizedStringKey {
         switch source {
         case .mcp: "dm-Katalog"
         case .search: "dm-Suche"

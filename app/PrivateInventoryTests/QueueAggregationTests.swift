@@ -97,10 +97,11 @@ struct QueueAggregationTests {
         // When: the scans are aggregated without the unknown location
         let rows = aggregateUnresolvedScans(scans, locations: [keller, vorratsschrank])
 
-        // Then: the row uses the fallback name
+        // Then: the row uses the localized fallback name (the catalog
+        // key, resolved for the test environment's locale)
         #expect(rows.count == 1)
         #expect(rows[0].locationID == unknown.id)
-        #expect(rows[0].locationName == "Unbekannt")
+        #expect(rows[0].locationName == String(localized: "Unbekannt"))
     }
 
     private func date(_ seconds: TimeInterval) -> Date {

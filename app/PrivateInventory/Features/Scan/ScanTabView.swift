@@ -3,6 +3,7 @@ import SwiftUI
 /// Scan tab (D1a): session-location dropdown, camera area with the
 /// permission flow, big Scan button, result overlay sheet.
 struct ScanTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model: ScanTabModel
     @State private var simulatedGtin = "4012345678901"
 
@@ -53,6 +54,18 @@ struct ScanTabView: View {
         }
         .task {
             model.start()
+        }
+        // Coming back from Settings must not leave a stale permission
+        // state (otherwise the flow dead-ends in "denied").
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                model.refreshPermissionState()
+            }
+        }
+        // Tab switch: end an open scan window — recognition must not
+        // continue invisibly in the background.
+        .onDisappear {
+            model.stopScanWindow()
         }
     }
 
@@ -205,14 +218,14 @@ private struct ScanOverlayView: View {
     var body: some View {
         VStack(spacing: 16) {
             switch overlay.content {
-            case let .booked(productName, gtin, sourceLabelKey, before, after, otherStock):
+            case let .booked(productName, gtin, sourceLabel, before, after, otherStock):
                 Text("Einbuchen +1")
                     .font(.title2.bold())
                 Text(productName)
                     .font(.headline)
                 Text(gtin)
                     .font(.body.monospaced())
-                Text(sourceLabelKey)
+                Text(sourceLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 VStack(spacing: 4) {
