@@ -98,9 +98,13 @@ struct ScanTabView: View {
             stubCameraArea
         } else if model.isScanning, let visionScanner = model.scanner as? VisionKitScanner {
             // Live camera preview during the scan window (device only).
-            ScannerHost(scanner: visionScanner)
-                .frame(height: 240)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            // A deferred startup failure is routed back to the model
+            // (the window is not actually open then).
+            ScannerHost(scanner: visionScanner) { failure in
+                model.scanWindowFailed(failure)
+            }
+            .frame(height: 240)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         } else {
             idleOrPermissionArea
         }
@@ -128,6 +132,14 @@ struct ScanTabView: View {
         case .granted:
             if model.scannerIsAvailable {
                 cameraPlaceholder("Kamera bereit")
+                // Startup failure of the last window (cleared by the
+                // next successful start).
+                if let reason = model.unavailableReason {
+                    Text(verbatim: reason)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
             } else {
                 cameraPlaceholder("Kamera nicht verfügbar")
             }
@@ -196,6 +208,7 @@ struct ScanTabView: View {
                 || model.isScanning
                 || model.sessionLocation == nil
                 || model.permissionState != .granted
+                || !model.scannerIsAvailable
         )
     }
 

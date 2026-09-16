@@ -5,6 +5,7 @@ import SwiftUI
 struct QueueTabView: View {
     private let repository: any InventoryRepository
     @State private var rows: [AggregatedQueueRow] = []
+    @State private var loadError: String?
 
     init(repository: any InventoryRepository) {
         self.repository = repository
@@ -13,7 +14,23 @@ struct QueueTabView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if rows.isEmpty {
+                if let error = loadError {
+                    // Fetch failures must not masquerade as an empty
+                    // queue (CodeRabbit): error state with retry.
+                    VStack(spacing: 12) {
+                        Text("Fehler beim Laden der Queue.")
+                            .font(.headline)
+                        Text(verbatim: error)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Erneut versuchen") {
+                            loadError = nil
+                            load()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else if rows.isEmpty {
                     Text("Keine ungelösten Scans")
                         .foregroundStyle(.secondary)
                 } else {
@@ -27,6 +44,12 @@ struct QueueTabView: View {
             .task {
                 load()
             }
+            // Background resolution booked/removed scans while this
+            // tab is open: refresh immediately instead of at next
+            // re-entry (CodeRabbit).
+            .onReceive(NotificationCenter.default.publisher(for: .queueDidChange)) { _ in
+                load()
+            }
         }
     }
 
@@ -35,8 +58,11 @@ struct QueueTabView: View {
             let scans = try repository.fetchUnresolvedScans()
             let locations = try repository.fetchLocations()
             rows = aggregateUnresolvedScans(scans, locations: locations)
+            loadError = nil
         } catch {
-            rows = []
+            // Keep the last rows visible; surface the failure with a
+            // retry action instead of a fake empty queue.
+            loadError = error.localizedDescription
         }
     }
 }

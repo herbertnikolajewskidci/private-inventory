@@ -69,10 +69,7 @@ struct AppEnvironment {
             for try await path in pathMonitor.pathUpdates() {
                 let isSatisfied = path.status == .satisfied
                 if isSatisfied, !wasSatisfied {
-                    let lookup = lookup
-                    Task {
-                        try? await lookup.resolvePendingScans()
-                    }
+                    await runQueueOnce()
                 }
                 wasSatisfied = isSatisfied
             }
@@ -80,6 +77,40 @@ struct AppEnvironment {
             // Monitor cancelled or failed: nothing to do (idempotent).
         }
     }
+
+    /// One resolution run with bounded backoff retries (CodeRabbit: a
+    /// single failed run must not park the queue until the NEXT path
+    /// transition — the network may stay up afterwards). Cancellation
+    /// stops the loop; an exhausted retry stays observable through the
+    /// next trigger (path transition or Trigger ① of the next scan).
+    @MainActor
+    private func runQueueOnce() async {
+        let maxAttempts = 3
+        for attempt in 0 ..< maxAttempts {
+            if Task.isCancelled {
+                return
+            }
+            do {
+                let resolved = try await lookup.resolvePendingScans()
+                if resolved > 0 {
+                    // Queue rows were booked/removed: refresh any open
+                    // queue view (CodeRabbit: the aggregation would
+                    // otherwise show removed scans until tab re-entry).
+                    NotificationCenter.default.post(name: .queueDidChange, object: nil)
+                }
+                return
+            } catch {
+                guard attempt < maxAttempts - 1 else { return }
+                try? await Task.sleep(for: .seconds(2 * (attempt + 1)))
+            }
+        }
+    }
+}
+
+/// Posted by the App-layer queue run after scans were booked/removed
+/// (the queue tab is read-only and observes this instead of polling).
+extension Notification.Name {
+    static let queueDidChange = Notification.Name("queueDidChange")
 }
 
 extension NWPathMonitor {

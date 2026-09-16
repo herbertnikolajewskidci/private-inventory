@@ -58,12 +58,24 @@ final class VisionKitScanner: NSObject, Scanner, DataScannerViewControllerDelega
 
     /// Called by `ScannerHost` when the controller enters the view
     /// hierarchy. Applies a buffered start request.
-    func attachHostController(_ controller: DataScannerViewController) {
+    ///
+    /// - Returns: the buffered start's failure, if applying it failed
+    ///   (CodeRabbit: never discard a deferred startup error with
+    ///   `try?` — the model already believes the window is open).
+    func attachHostController(_ controller: DataScannerViewController) -> ScanStartError? {
         hostController = controller
         controller.delegate = self
-        if pendingStart {
-            pendingStart = false
-            try? controller.startScanning()
+        guard pendingStart else { return nil }
+        pendingStart = false
+        do {
+            try controller.startScanning()
+            return nil
+        } catch let error as ScanStartError {
+            onGTIN = nil
+            return error
+        } catch {
+            onGTIN = nil
+            return ScanStartError.unavailable(reason: String(describing: error))
         }
     }
 
@@ -98,6 +110,9 @@ final class VisionKitScanner: NSObject, Scanner, DataScannerViewControllerDelega
 @MainActor
 struct ScannerHost: UIViewControllerRepresentable {
     let scanner: VisionKitScanner
+    /// Deferred startup failure: a buffered start could not be applied
+    /// at attach. The model must stop believing the window is open.
+    let onStartFailure: (ScanStartError) -> Void
 
     func makeUIViewController(context _: Context) -> DataScannerViewController {
         // GTINs are EAN barcodes; no QR (CONTEXT.md glossary).
@@ -108,7 +123,9 @@ struct ScannerHost: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: DataScannerViewController, context _: Context) {
-        scanner.attachHostController(controller)
+        if let failure = scanner.attachHostController(controller) {
+            onStartFailure(failure)
+        }
     }
 
     @MainActor

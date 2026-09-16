@@ -4,11 +4,14 @@ import SwiftUI
 import UIKit
 
 /// One passive stock hint for another location (scan overlay, ADR-0003).
+/// Identified by the location UUID — location names are user data and
+/// not necessarily unique (CodeRabbit: name-keyed ids break ForEach).
 struct OtherLocationStock: Equatable, Identifiable {
+    let locationID: UUID
     let locationName: String
     let quantity: Int
-    var id: String {
-        locationName
+    var id: UUID {
+        locationID
     }
 }
 
@@ -174,11 +177,10 @@ final class ScanTabModel {
                 self?.handleGTIN(gtin)
             }
             isScanning = true
+            unavailableReason = nil
         } catch let error as ScanStartError {
             isScanning = false
-            if case let .unavailable(reason) = error {
-                unavailableReason = reason
-            }
+            unavailableReason = Self.reason(for: error)
         } catch {
             isScanning = false
             unavailableReason = error.localizedDescription
@@ -194,9 +196,10 @@ final class ScanTabModel {
                 self?.handleGTIN(gtin)
             }
             isScanning = true
+            unavailableReason = nil
         } catch {
             isScanning = false
-            unavailableReason = error.localizedDescription
+            unavailableReason = Self.reason(for: error)
             return
         }
         scanner.debugSimulateScan(gtin: gtin)
@@ -226,6 +229,7 @@ final class ScanTabModel {
                 .filter { $0.locationID != stockLevel.locationID }
                 .map { level in
                     OtherLocationStock(
+                        locationID: level.locationID,
                         locationName: model.locationName(for: level.locationID),
                         quantity: level.quantity
                     )
@@ -263,6 +267,20 @@ final class ScanTabModel {
         guard isScanning else { return }
         scanner.stop()
         isScanning = false
+    }
+
+    /// Deferred scanner startup failure: the host applied a buffered
+    /// start and it failed. The window is not actually open.
+    func scanWindowFailed(_ error: ScanStartError) {
+        isScanning = false
+        unavailableReason = Self.reason(for: error)
+    }
+
+    private static func reason(for error: Error) -> String {
+        if let startError = error as? ScanStartError, case let .unavailable(reason) = startError {
+            return reason
+        }
+        return error.localizedDescription
     }
 
     private static func sourceLabel(for source: ProductSource) -> LocalizedStringKey {
