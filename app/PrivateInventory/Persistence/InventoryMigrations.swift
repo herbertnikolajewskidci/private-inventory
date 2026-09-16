@@ -107,6 +107,18 @@ enum InventoryMigrations {
             try database.rename(table: "unresolved_scan_new", to: "unresolved_scan")
         }
 
+        // Alias GTINs (ADR-0009): additional barcodes that map to one
+        // product (relisted products carry old and new barcodes). The
+        // gtin is unique so a GTIN resolves to exactly one product.
+        migrator.registerMigration("0005_gtin_aliases") { database in
+            try database.create(table: "gtin_alias") { table in
+                table.column("id", .text).notNull().primaryKey()
+                table.column("gtin", .text).notNull().unique()
+                table.column("productID", .text).notNull()
+                    .references("product", onDelete: .cascade)
+            }
+        }
+
         return migrator
     }
 }

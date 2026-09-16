@@ -32,6 +32,14 @@ struct GRDBInventoryRepository: InventoryRepository {
             guard existing == nil else {
                 throw InventoryError.duplicateGTIN
             }
+            // A GTIN that is already an alias of a product can never
+            // become a primary GTIN (ADR-0009).
+            let aliased = try GTINAlias
+                .filter(Column("gtin") == product.gtin)
+                .fetchOne(database)
+            guard aliased == nil else {
+                throw InventoryError.duplicateGTIN
+            }
             try product.insert(database)
             return product
         }
@@ -39,7 +47,36 @@ struct GRDBInventoryRepository: InventoryRepository {
 
     func fetchProduct(gtin: String) throws -> Product? {
         try queue.read { database in
-            try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            let product = try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            guard let product else {
+                // Alias GTINs (ADR-0009): the scanned barcode belongs
+                // to the product it is bound to.
+                let alias = try GTINAlias.filter(Column("gtin") == gtin).fetchOne(database)
+                guard let alias else { return nil }
+                return try Product
+                    .filter(Column("id") == alias.productID.uuidString)
+                    .fetchOne(database)
+            }
+            return product
+        }
+    }
+
+    func createGTINAlias(gtin: String, productID: UUID) throws {
+        try queue.write { database in
+            try requireProduct(database, productID)
+            // A primary GTIN is never an alias (ADR-0009).
+            let primary = try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            guard primary == nil else {
+                throw InventoryError.duplicateGTIN
+            }
+            let alias = try GTINAlias.filter(Column("gtin") == gtin).fetchOne(database)
+            if let alias {
+                // The same alias twice is a no-op; a different
+                // product owns the GTIN already.
+                guard alias.productID != productID else { return }
+                throw InventoryError.duplicateGTIN
+            }
+            try GTINAlias(gtin: gtin, productID: productID).insert(database)
         }
     }
 

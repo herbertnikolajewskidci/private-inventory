@@ -283,4 +283,62 @@ struct DmSearchCatalogSourceTests {
             #expect(reason.contains("URLSession transport error"))
         }
     }
+
+    // MARK: - Free-text search (CatalogSearch, ticket #24)
+
+    /// A free-text query returns EVERY candidate with its OWN GTIN
+    /// (they are not the queried text), in response order, with the
+    /// recorded 4-day cache TTL (photo recognition, D3a/D4a).
+    ///
+    /// Given: the recorded text-query response (two candidates with
+    /// their own GTINs) and its recorded cache-control header
+    /// When: search(query: "Golden Intense")
+    /// Then: two candidates with GTINs 4066447993554 and
+    /// 4070765015133, source .search, cacheTTL 345600, non-empty
+    /// names
+    @Test func textQueryReturnsCandidatesWithOwnGTINsAndCacheTTL() async throws {
+        // Given
+        let stub = makeStub(.init(
+            statusCode: 200,
+            fixture: "dm_search_text_query.json",
+            headers: [
+                "cache-control": Fixture.header(
+                    "cache-control",
+                    from: "dm_search_text_query.headers.txt"
+                ) ?? ""
+            ]
+        ))
+        let source: any CatalogSearch = DmSearchCatalogSource(loader: stub)
+
+        // When
+        let candidates = try await source.search(query: "Golden Intense")
+
+        // Then
+        #expect(candidates.count == 2)
+        #expect(candidates.map(\.gtin) == ["4066447993554", "4070765015133"])
+        #expect(candidates.allSatisfy { $0.source == .search })
+        #expect(candidates.allSatisfy { $0.cacheTTL == 345_600 })
+        #expect(candidates.allSatisfy { !$0.name.isEmpty })
+    }
+
+    /// An empty or whitespace-only query returns no candidates
+    /// WITHOUT a network call (the search input is user-editable;
+    /// an empty query must not hit the API).
+    ///
+    /// Given: a stub with no recorded responses (any request would
+    /// fail)
+    /// When: search(query: "   ")
+    /// Then: an empty array is returned and zero requests were sent
+    @Test func emptyTextQueryReturnsNoCandidatesWithoutNetwork() async throws {
+        // Given
+        let stub = StubURLLoading(responses: [])
+        let source: any CatalogSearch = DmSearchCatalogSource(loader: stub)
+
+        // When
+        let candidates = try await source.search(query: "   ")
+
+        // Then
+        #expect(candidates.isEmpty)
+        #expect(await stub.recordedRequests().isEmpty)
+    }
 }

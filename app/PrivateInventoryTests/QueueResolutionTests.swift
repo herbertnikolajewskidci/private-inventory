@@ -281,4 +281,70 @@ struct QueueResolutionTests {
         )
         #expect(stockC.quantity == 2)
     }
+
+    /// A local Product under the scanned GTIN beats the external
+    /// catalog (path 1, ticket #24 D7a): the row is booked without
+    /// any source call — even with a fresh NEGATIVE cache entry for
+    /// the GTIN, which must not keep the rows queued after a
+    /// manual/photo resolution.
+    ///
+    /// Given: a local product under A, a fresh negative cache entry
+    /// for A, a queued scan of A and a source that would answer a
+    /// product for A
+    /// When: resolvePendingScans() runs
+    /// Then: it returns 1, the stock of the LOCAL product is booked
+    /// at the scan's location, the queue is empty and the source is
+    /// never called
+    @Test func localProductBeatsCatalogAndResolvesQueueWithoutSourceCall() async throws {
+        // Given
+        let mcp = StubCatalogSource(
+            name: "mcp",
+            outcomes: [
+                .product(stubProduct(gtin: gtinA, name: "Mehl aus dem Katalog"))
+            ]
+        )
+        let (inventory, lookup) = try makeLookup(sources: [mcp])
+        let cellar = try #require(try inventory.cellar())
+        let local = try inventory.repository.createProduct(
+            Product(
+                gtin: gtinA,
+                name: "Mehl",
+                brand: "Mühle",
+                imageURL: nil,
+                source: .manual
+            )
+        )
+        // A fresh negative entry for the same GTIN.
+        let cache = GRDBCatalogCache(database: inventory.database)
+        try cache.store(
+            CatalogCacheEntry.negative(
+                gtin: gtinA,
+                resolvedAt: baseTime,
+                expiresAt: baseTime.addingTimeInterval(3600)
+            )
+        )
+        _ = try inventory.repository.recordUnresolvedScan(
+            UnresolvedScan(
+                gtin: gtinA,
+                locationID: cellar.id,
+                quantity: 2,
+                createdAt: baseTime
+            )
+        )
+
+        // When
+        let count = try await lookup.resolvePendingScans()
+
+        // Then: booked at the LOCAL product, zero source calls
+        #expect(count == 1)
+        let stock = try #require(
+            try inventory.repository.fetchStockLevel(
+                productID: local.id,
+                locationID: cellar.id
+            )
+        )
+        #expect(stock.quantity == 2)
+        #expect(try inventory.repository.fetchUnresolvedScans().isEmpty)
+        #expect(await mcp.callCount == 0)
+    }
 }

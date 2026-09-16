@@ -1,14 +1,43 @@
 import SwiftUI
 
-/// Queue tab (D2a): read-only list of unresolved scans aggregated by
-/// (GTIN, location), shown as "3×". Actions come with a later ticket.
+/// The aggregated queue row a photo/manual resolution starts
+/// from (D1a). Identified by the GTIN (D5a: the action binds
+/// ALL open rows of the GTIN, not just one location).
+struct QueueResolutionTarget: Identifiable, Equatable {
+    let gtin: String
+    let locationName: String
+
+    var id: String {
+        gtin
+    }
+}
+
+/// Which resolution flow a tapped queue row starts (D1a).
+enum ResolutionEntry: Equatable {
+    case photo
+    case manual
+}
+
+/// Queue tab (D2a): list of unresolved scans aggregated by (GTIN,
+/// location), shown as "3×". Row actions (D1a) start the photo or
+/// manual resolution (ticket #24).
 struct QueueTabView: View {
     private let repository: any InventoryRepository
+    private let catalogSearch: any CatalogSearch
+    private let recognizer: any TextRecognizer
     @State private var rows: [AggregatedQueueRow] = []
     @State private var loadError: String?
+    @State private var resolutionTarget: QueueResolutionTarget?
+    @State private var entry: ResolutionEntry?
 
-    init(repository: any InventoryRepository) {
+    init(
+        repository: any InventoryRepository,
+        catalogSearch: any CatalogSearch,
+        recognizer: any TextRecognizer
+    ) {
         self.repository = repository
+        self.catalogSearch = catalogSearch
+        self.recognizer = recognizer
     }
 
     var body: some View {
@@ -36,6 +65,22 @@ struct QueueTabView: View {
                 } else {
                     List(rows) { row in
                         QueueRowView(row: row)
+                            .swipeActions(edge: .trailing) {
+                                Button("Foto aufnehmen", systemImage: "camera.fill") {
+                                    startResolution(.photo, for: row)
+                                }
+                                Button("Manuell anlegen", systemImage: "square.and.pencil") {
+                                    startResolution(.manual, for: row)
+                                }
+                            }
+                            .contextMenu {
+                                Button("Foto aufnehmen", systemImage: "camera.fill") {
+                                    startResolution(.photo, for: row)
+                                }
+                                Button("Manuell anlegen", systemImage: "square.and.pencil") {
+                                    startResolution(.manual, for: row)
+                                }
+                            }
                     }
                 }
             }
@@ -50,7 +95,35 @@ struct QueueTabView: View {
             .onReceive(NotificationCenter.default.publisher(for: .queueDidChange)) { _ in
                 load()
             }
+            // One sheet for both resolution entries (D1a).
+            .sheet(item: $resolutionTarget) { target in
+                switch entry {
+                case .photo:
+                    PhotoRecognitionView(
+                        scannedGTIN: target.gtin,
+                        recognizer: recognizer,
+                        search: catalogSearch,
+                        binding: ProductBinding(repository: repository)
+                    ) {
+                        NotificationCenter.default.post(name: .queueDidChange, object: nil)
+                    }
+                case .manual:
+                    ManualProductFormView(
+                        scannedGTIN: target.gtin,
+                        binding: ProductBinding(repository: repository)
+                    ) {
+                        NotificationCenter.default.post(name: .queueDidChange, object: nil)
+                    }
+                case nil:
+                    EmptyView()
+                }
+            }
         }
+    }
+
+    private func startResolution(_ entry: ResolutionEntry, for row: AggregatedQueueRow) {
+        self.entry = entry
+        resolutionTarget = QueueResolutionTarget(gtin: row.gtin, locationName: row.locationName)
     }
 
     private func load() {
@@ -91,6 +164,10 @@ private struct QueueRowView: View {
 
 #Preview {
     if let database = try? InventoryDatabase.makeInMemory() {
-        QueueTabView(repository: GRDBInventoryRepository(database: database))
+        QueueTabView(
+            repository: GRDBInventoryRepository(database: database),
+            catalogSearch: DmSearchCatalogSource(),
+            recognizer: TextRecognizerStub()
+        )
     }
 }

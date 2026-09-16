@@ -280,4 +280,32 @@ struct GRDBStorageTests {
         )
         #expect(stored.quantity == 1)
     }
+
+    // MARK: - GTIN aliases (ADR-0009)
+
+    /// Alias rows cascade when their product is deleted (migration
+    /// 0005: productID references product with onDelete: .cascade).
+    ///
+    /// Given: a product with one alias row
+    /// When: the product is deleted
+    /// Then: no alias rows remain
+    @Test func gtinAliasRowsCascadeWhenProductDeleted() throws {
+        // Given: a product and its alias
+        let inventory = try TestInventory()
+        let product = try inventory.repository.createProduct(TestInventory.product())
+        try inventory.repository.createGTINAlias(gtin: "4000000000003", productID: product.id)
+
+        // When: the product is deleted
+        try inventory.queue.write { database in
+            _ = try Product
+                .filter(Column("id") == product.id.uuidString)
+                .deleteAll(database)
+        }
+
+        // Then: the alias row is gone with it
+        let aliasCount = try inventory.queue.read { database in
+            try GTINAlias.fetchCount(database)
+        }
+        #expect(aliasCount == 0)
+    }
 }

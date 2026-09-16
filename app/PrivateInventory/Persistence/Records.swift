@@ -57,3 +57,13 @@ extension CatalogCacheEntry: FetchableRecord, PersistableRecord {
         .uppercaseString
     }
 }
+
+extension GTINAlias: FetchableRecord, PersistableRecord {
+    static let databaseTableName = "gtin_alias"
+
+    /// UUIDs are stored as text (ADR-0005); the GRDB default is a
+    /// 16-byte blob.
+    static func databaseUUIDEncodingStrategy(for _: String) -> DatabaseUUIDEncodingStrategy {
+        .uppercaseString
+    }
+}
