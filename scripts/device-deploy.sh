@@ -135,7 +135,10 @@ echo "Installing on ${DEVICE_NAME} (${DEVICE_ID})..."
 xcrun devicectl device install app --device "${DEVICE_ID}" "${APP_PATH}"
 
 if (( LAUNCH )); then
-  xcrun devicectl device process launch --device "${DEVICE_ID}" "${BUNDLE_ID}"
+  if ! xcrun devicectl device process launch --device "${DEVICE_ID}" "${BUNDLE_ID}"; then
+    echo "error: launching failed (a locked device refuses launches). The app IS installed — unlock ${DEVICE_NAME} and start it manually, or re-run this script." >&2
+    exit 1
+  fi
   echo "Done: installed on ${DEVICE_NAME} (${DEVICE_ID}), configuration ${CONFIGURATION}, launched."
 else
   echo "Done: installed on ${DEVICE_NAME} (${DEVICE_ID}), configuration ${CONFIGURATION}."
