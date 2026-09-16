@@ -6,7 +6,7 @@ import Foundation
 /// This protocol is the layer boundary (ADR-0007): Features depend
 /// on it and never on GRDB. The GRDB implementation lives in
 /// `Persistence/`.
-protocol InventoryRepository {
+protocol InventoryRepository: Sendable {
     /// All locations, including the seeded defaults.
     func fetchLocations() throws -> [Location]
 
