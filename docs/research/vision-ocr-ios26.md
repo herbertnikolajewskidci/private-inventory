@@ -113,11 +113,14 @@ Die Nutzung von `PhotosPicker` (aus
 
 ### 5. On-Device & Offline-Fähigkeit
 
-Die gesamte Verarbeitung findet lokal
-auf dem Gerät statt. Es erfolgt kein
-Netzwerkaufruf. Die Unterstützung für
-Deutsch (`de-DE`) und Englisch
-(`en-US`) ist nativ und offline
+Die OCR-Verarbeitung findet komplett lokal
+auf dem Gerät statt — OCR erfolgt ohne
+Netzwerkaufruf. (Das nachgelagerte
+Katalog-Matching über die dm-Suche braucht
+denwohl Netz; ohne Empfang bleibt der
+OCR-Text in der Queue, ADR-0004.) Die
+Unterstützung für Deutsch (`de-DE`) und
+Englisch (`en-US`) ist nativ und offline
 verfügbar.
 
 ### 6. Verfügbarkeit
@@ -154,10 +157,16 @@ struct OCRService {
 
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US", "de-DE"]
+        request.recognitionLanguages = [
+            Locale.Language(identifier: "en-US"),
+            Locale.Language(identifier: "de-DE")
+        ]
 
-        // Ausführung auf dem Hintergrund-Thread durch async/await
-        let observations = try await request.perform(on: cgImage)
+        // Ausführung: async/await, Orientierung mappen
+        let observations = try await request.perform(
+            on: cgImage,
+            orientation: .up
+        )
 
         return observations.compactMap { observation in
             // Wir nehmen den besten Kandidaten pro Zeile

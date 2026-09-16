@@ -215,8 +215,19 @@ struct CatalogLookup {
             // network — a fresh negative cache entry must not keep the rows
             // queued after a manual/photo resolution.
             if let local = try repository.fetchProduct(gtin: scan.gtin) {
-                _ = try repository.bookUnresolvedScan(scanID: scan.id, productID: local.id)
-                resolved += 1
+                do {
+                    _ = try repository.bookUnresolvedScan(
+                        scanID: scan.id,
+                        productID: local.id
+                    )
+                    resolved += 1
+                } catch InventoryError.missingParent {
+                    // The row vanished between the fetch and the
+                    // booking — a concurrent resolver (manual bind,
+                    // another queue run) already booked and removed
+                    // it. Nothing left to do for this row.
+                    continue
+                }
                 continue
             }
             guard let catalog = try await resolve(gtin: scan.gtin) else {

@@ -31,6 +31,10 @@ final class PhotoRecognitionModel {
     private let recognizer: any TextRecognizer
     private let search: any CatalogSearch
     private let binding: ProductBinding
+    /// Counts the started searches; a response of an OVERLAPPED
+    /// search is discarded so a slow older request cannot overwrite
+    /// the state of a newer one (CodeRabbit).
+    private var searchGeneration = 0
 
     init(
         scannedGTIN: String,
@@ -87,10 +91,17 @@ final class PhotoRecognitionModel {
     /// Zero usable candidates → `.noMatches`; else `.candidates`.
     /// Errors → `.failed(message:)`.
     func search() async {
+        searchGeneration += 1
+        let myGeneration = searchGeneration
         do {
             let matches = try await search.search(query: searchQuery)
+            guard myGeneration == searchGeneration else {
+                // A newer search is in flight; this response is stale.
+                return
+            }
             phase = matches.isEmpty ? .noMatches : .candidates(matches: matches)
         } catch {
+            guard myGeneration == searchGeneration else { return }
             phase = .failed(message: String(localized: "Fehler beim Suchen."))
         }
     }

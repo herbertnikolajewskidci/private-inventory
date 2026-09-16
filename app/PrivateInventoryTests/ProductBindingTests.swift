@@ -158,6 +158,7 @@ struct ProductBindingTests {
 
         // Then: created under B as the user's curated truth
         #expect(product.gtin == gtinB)
+        #expect(bookedRows == 2)
         #expect(product.source == .manual)
         // The scanned GTIN resolves to it via the alias
         let viaAlias = try #require(try inventory.repository.fetchProduct(gtin: gtinA))
