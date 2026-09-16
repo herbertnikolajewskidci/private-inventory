@@ -31,8 +31,8 @@ Usage: ./scripts/device-deploy.sh --team-id <TEAM_ID> [--device <name-or-id>] [-
 EOF
 }
 
-require_value() { # $1 = flag name; errors if no value follows it
-  if [[ $# -lt 2 ]]; then
+require_value() { # $1 = flag name; errors if no (non-flag) value follows it
+  if [[ $# -lt 2 || "${2}" == --* ]]; then
     echo "error: ${1} requires a value" >&2
     usage >&2
     exit 1
