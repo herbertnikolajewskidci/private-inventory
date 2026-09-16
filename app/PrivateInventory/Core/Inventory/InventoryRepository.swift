@@ -71,6 +71,29 @@ protocol InventoryRepository: Sendable {
     /// itself, ADR-0005). Creating the same alias twice is a no-op.
     func createGTINAlias(gtin: String, productID: UUID) throws
 
+    /// The full binding of a scanned (unresolvable) GTIN in ONE
+    /// transaction (ticket #24, CodeRabbit: separate transactions
+    /// for product creation, alias creation and the row bookings
+    /// could commit product + alias while a later row booking
+    /// fails — partial state). Creates the target product when
+    /// missing (`product.gtin` free, primary OR alias → reuse),
+    /// binds `scannedGTIN` as an alias when it differs from the
+    /// target's own GTIN, then books and removes ALL open queue
+    /// rows of `scannedGTIN` (per row at its own location).
+    ///
+    /// Throws `InventoryError.duplicateGTIN` when the target GTIN
+    /// is taken by a different product, or `scannedGTIN` is the
+    /// primary GTIN of / alias of a different product; atomic:
+    /// either the full binding (product, alias, all rows) commits
+    /// or nothing does.
+    ///
+    /// - Returns: the product the scanned GTIN now resolves to,
+    ///   and the number of queue rows booked in this run.
+    func bindGTIN(scannedGTIN: String, product: Product) throws -> (
+        product: Product,
+        bookedRows: Int
+    )
+
     /// Einbuchen for a queued UnresolvedScan (ticket #14): books the
     /// scan's full quantity at the scan's location in the StockLevel
     /// of `productID` (creating it when missing), then removes the

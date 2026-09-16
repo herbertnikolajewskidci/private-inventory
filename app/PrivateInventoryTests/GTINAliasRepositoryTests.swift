@@ -112,4 +112,45 @@ struct GTINAliasRepositoryTests {
             try inventory.repository.createGTINAlias(gtin: "4000000000003", productID: UUID())
         }
     }
+
+    /// bindGTIN() reuses the product an alias GTIN belongs to: a
+    /// candidate GTIN that is itself an alias resolves to the SAME
+    /// product (no second product, CodeRabbit atomic-bind follow-up
+    /// coverage for the alias-of-target path).
+    ///
+    /// Given: a product under GTIN B and an alias A -> B
+    /// When: bindGTIN(scannedGTIN: X, product: Product under the
+    /// alias GTIN A)
+    /// Then: the SAME product under B comes back, X is its second
+    /// alias, and A still resolves to the product
+    @Test func bindGTINReusesProductWhenTargetGTINIsAnAlias() throws {
+        // Given: a product under B, alias A -> B
+        let inventory = try TestInventory()
+        let product = try inventory.repository.createProduct(
+            TestInventory.product(gtin: "4000000000002", name: "Deo")
+        )
+        try inventory.repository.createGTINAlias(
+            gtin: "4000000000003",
+            productID: product.id
+        )
+
+        // When: binding a scanned GTIN to the alias GTIN A
+        let (bound, bookedRows) = try inventory.repository.bindGTIN(
+            scannedGTIN: "4000000000009",
+            product: TestInventory.product(gtin: "4000000000003", name: "Deo")
+        )
+
+        // Then: the aliased product under B, two aliases now
+        #expect(bound.id == product.id)
+        #expect(bound.gtin == "4000000000002")
+        #expect(bookedRows == 0)
+        let viaA = try #require(
+            try inventory.repository.fetchProduct(gtin: "4000000000003")
+        )
+        let viaX = try #require(
+            try inventory.repository.fetchProduct(gtin: "4000000000009")
+        )
+        #expect(viaA.id == product.id)
+        #expect(viaX.id == product.id)
+    }
 }

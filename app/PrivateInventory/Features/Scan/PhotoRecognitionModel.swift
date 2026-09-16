@@ -62,16 +62,20 @@ final class PhotoRecognitionModel {
     }
 
     /// OCR + first search: sets `.recognizing`, runs the
-    /// recognizer, builds the query, then `search()`. A thrown
-    /// error (or a nil/CGImage-less image) → `.failed(message:)`.
+    /// recognizer (with the image's orientation, CodeRabbit),
+    /// builds the query, then `search()`. A thrown error (or a
+    /// nil/CGImage-less image) → `.failed(message:)`.
     func recognize(image: UIImage?) async {
         phase = .recognizing
-        guard let cgImage = image?.cgImage else {
+        guard let image, let cgImage = image.cgImage else {
             phase = .failed(message: String(localized: "OCR fehlgeschlagen."))
             return
         }
         do {
-            let lines = try await recognizer.recognize(in: cgImage)
+            let lines = try await recognizer.recognize(
+                in: cgImage,
+                orientation: image.visionOrientation
+            )
             searchQuery = Self.searchQuery(from: lines)
             await search()
         } catch {

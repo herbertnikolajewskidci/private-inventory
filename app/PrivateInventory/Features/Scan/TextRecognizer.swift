@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import ImageIO
+import UIKit
 import Vision
 
 /// One line of text recognized on a product label (photo
@@ -21,8 +23,31 @@ struct RecognizedLine: Equatable, Sendable {
 /// simulator run against a stub; the live implementation uses the
 /// Vision text recognition. Fully on-device, no network (ADR-0004).
 protocol TextRecognizer: Sendable {
-    /// Recognizes text lines in the image, in reading order.
-    func recognize(in image: CGImage) async throws -> [RecognizedLine]
+    /// Recognizes text lines in the image, in reading order. The
+    /// orientation MUST be passed (CodeRabbit: a portrait photo's
+    /// CGImage is otherwise processed in its raw orientation).
+    func recognize(
+        in image: CGImage,
+        orientation: CGImagePropertyOrientation
+    ) async throws -> [RecognizedLine]
+}
+
+/// Maps a `UIImage` orientation onto the Vision orientation enum
+/// (1:1 — the cases correspond).
+extension UIImage {
+    var visionOrientation: CGImagePropertyOrientation {
+        switch imageOrientation {
+        case .up: .up
+        case .down: .down
+        case .left: .left
+        case .right: .right
+        case .upMirrored: .upMirrored
+        case .downMirrored: .downMirrored
+        case .leftMirrored: .leftMirrored
+        case .rightMirrored: .rightMirrored
+        @unknown default: .up
+        }
+    }
 }
 
 /// The live on-device implementation (Vision, ticket #24).
@@ -30,14 +55,20 @@ struct VisionTextRecognizer: TextRecognizer {
     /// Lines below this Vision confidence are dropped (OCR noise).
     static let minimumConfidence = 0.3
 
-    func recognize(in image: CGImage) async throws -> [RecognizedLine] {
+    func recognize(
+        in image: CGImage,
+        orientation: CGImagePropertyOrientation
+    ) async throws -> [RecognizedLine] {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.recognitionLanguages = ["en-US", "de-DE"].compactMap {
             Locale.Language(identifier: $0)
         }
         request.usesLanguageCorrection = false
-        let observations = try await request.perform(on: image)
+        let observations = try await request.perform(
+            on: image,
+            orientation: orientation
+        )
         return observations
             .compactMap { $0.topCandidates(1).first }
             .filter { Double($0.confidence) >= Self.minimumConfidence }
@@ -49,6 +80,7 @@ struct VisionTextRecognizer: TextRecognizer {
 /// records its calls.
 actor TextRecognizerStub: TextRecognizer {
     private(set) var callCount = 0
+    private(set) var lastOrientation: CGImagePropertyOrientation?
     private var lines: [RecognizedLine]
 
     init(lines: [RecognizedLine] = []) {
@@ -59,8 +91,12 @@ actor TextRecognizerStub: TextRecognizer {
         self.lines = lines
     }
 
-    func recognize(in _: CGImage) async throws -> [RecognizedLine] {
+    func recognize(
+        in _: CGImage,
+        orientation: CGImagePropertyOrientation
+    ) async throws -> [RecognizedLine] {
         callCount += 1
+        lastOrientation = orientation
         return lines
     }
 }

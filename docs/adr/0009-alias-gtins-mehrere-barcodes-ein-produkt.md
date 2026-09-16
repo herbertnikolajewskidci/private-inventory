@@ -6,9 +6,9 @@ alte Verpackung bleibt im Haushalt (realer Fall Session 11: Balea Men
 „Golden Intense", gescannte GTIN `4066447599992` vs. aktuelle
 `4070765015133`). Entscheidung: Ein `Product` behält seine Primär-GTIN
 (ADR-0003-Identität bleibt unangetastet); eine neue Tabelle
-`gtin_aliases` mappt weitere GTINs auf dieselbe Produkt-ID (gtin
+`gtin_alias` mappt weitere GTINs auf dieselbe Produkt-ID (gtin
 unique, FK auf product). `fetchProduct(gtin:)` schlägt zuerst in
-`products`, dann in `gtin_aliases` nach — ein einziger Aufruf, der
+`product`, dann in `gtin_alias` nach — ein einziger Aufruf, der
 Aufrufer (`ScanSession` Pfad 1, Queue-Run Pfad 1) kennt keinen
 Unterschied. Die Alias-Anlage erfolgt ausschließlich im
 Foto-/Manuell-Bestätigungs-Moment (Ticket #24, D4a/D5a): Produkt unter

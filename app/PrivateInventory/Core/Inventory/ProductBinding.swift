@@ -21,16 +21,20 @@ struct ProductBinding {
     /// Binds `scannedGTIN` (the GTIN the queue rows are queued
     /// under) to a product:
     /// - the product is reused when one already exists under
-    ///   `productGTIN` (primary or alias; alias-aware
-    ///   `fetchProduct`), otherwise created with the confirmed data
-    ///   and `source = .manual` (D8a: the binding is the user's
-    ///   curated truth).
+    ///   `productGTIN` (primary or alias; the reuse is alias-aware),
+    ///   otherwise created with the confirmed data and
+    ///   `source = .manual` (D8a: the binding is the user's curated
+    ///   truth).
     /// - when the bound product's own GTIN differs from
     ///   `scannedGTIN`, the scanned GTIN becomes an alias of the
     ///   product (ADR-0009) — both barcodes resolve to this product
     ///   from now on, permanently.
     /// - every open queue row of `scannedGTIN` is booked (per row
     ///   at its own location) and removed.
+    ///
+    /// ALL of this runs in ONE repository transaction
+    /// (`bindGTIN`, CodeRabbit: partial product/alias state without
+    /// a failed booking cannot happen).
     ///
     /// - Throws: `InventoryError.duplicateGTIN` when the target GTIN
     ///   belongs to a different product (e.g. the user typed an
@@ -46,33 +50,16 @@ struct ProductBinding {
         imageURL: URL?
     ) throws -> Product {
         let targetGTIN = productGTIN ?? scannedGTIN
-        let product: Product = if let existing = try repository.fetchProduct(gtin: targetGTIN) {
-            existing
-        } else {
-            try repository.createProduct(
-                Product(
-                    gtin: targetGTIN,
-                    name: name,
-                    brand: brand,
-                    imageURL: imageURL,
-                    source: .manual
-                )
+        let (product, _) = try repository.bindGTIN(
+            scannedGTIN: scannedGTIN,
+            product: Product(
+                gtin: targetGTIN,
+                name: name,
+                brand: brand,
+                imageURL: imageURL,
+                source: .manual
             )
-        }
-        if product.gtin != scannedGTIN {
-            try repository.createGTINAlias(
-                gtin: scannedGTIN,
-                productID: product.id
-            )
-        }
-        let rows = try repository.fetchUnresolvedScans()
-            .filter { $0.gtin == scannedGTIN }
-        for row in rows {
-            _ = try repository.bookUnresolvedScan(
-                scanID: row.id,
-                productID: product.id
-            )
-        }
+        )
         return product
     }
 }

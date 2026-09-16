@@ -85,6 +85,9 @@ struct ManualProductFormView: View {
             )
             NotificationCenter.default.post(name: .queueDidChange, object: nil)
             onCompleted()
+            // Close the form after a successful save (CodeRabbit):
+            // the sheet must not stay open over an empty queue.
+            dismiss()
         } catch InventoryError.duplicateGTIN {
             errorMessage = String(localized: "Diese GTIN gehört zu einem anderen Produkt.")
         } catch {

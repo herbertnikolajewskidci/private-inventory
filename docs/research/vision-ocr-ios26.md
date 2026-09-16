@@ -35,11 +35,26 @@ basiert.
       oder `.fast`.
     - `recognitionLanguages`: Ein
       Array von Sprach-Identifikatoren
-      (z. B. `["en-US", "de-DE"]`).
+      (z. B. `Locale.Language(identifier:
+      "de-DE")`).
     - `usesLanguageCorrection`: Bool.
-    - `minimumConfidence`: Schwellenwert
-      für die Genauigkeit.
-  - **Ergebnisse**: `[VNRecognizedTextObservation]`.
+    - `minimumTextHeightFraction`:
+      Request-level Schwellenwert für die
+      Mindesttexthöhe (eine Konfidenz-Schwelle
+      gibt es NICHT am Request — die
+      Konfidenz wird pro Kandidat geliefert
+      und in der App nachgefiltert, siehe
+      `TextRecognizer.minimumConfidence`).
+  - **Orientierung**: `perform(on:
+    orientation:)` nimmt
+    `CGImagePropertyOrientation` — der
+    Aufrufer muss die `UIImage.orientation`
+    mappen (Porträt-/gespiegelte Fotos
+    sonst in Roh-Orientierung).
+  - **Ergebnisse**: `Self.Result`
+    (`[TextObservation]`), je Observation
+    `topCandidates(1)` mit `.string` und
+    `.confidence`.
 - **Swift 6 & Concurrency**: Die neue
   API ist für Actors optimiert. Die
   Ausführung erfolgt asynchron und
