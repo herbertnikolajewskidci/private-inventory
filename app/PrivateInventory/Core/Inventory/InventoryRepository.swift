@@ -14,7 +14,8 @@ protocol InventoryRepository: Sendable {
     /// a Product with the same GTIN already exists.
     func createProduct(_ product: Product) throws -> Product
 
-    /// The product stored under `gtin`, if any.
+    /// The product stored under `gtin`, if any. The lookup includes
+    /// alias GTINs (ADR-0009).
     func fetchProduct(gtin: String) throws -> Product?
 
     /// Einbuchen: raises the quantity of the StockLevel for
@@ -62,6 +63,36 @@ protocol InventoryRepository: Sendable {
     /// resolved and booked, ticket #14). Deleting an unknown id is
     /// not an error.
     func deleteUnresolvedScan(id: UUID) throws
+
+    /// Binds an additional GTIN to a product (ADR-0009). Throws
+    /// `InventoryError.duplicateGTIN` when `gtin` is the primary GTIN of
+    /// a Product or an alias of a different one; `missingParent` when
+    /// the product does not exist (the repository validates parents
+    /// itself, ADR-0005). Creating the same alias twice is a no-op.
+    func createGTINAlias(gtin: String, productID: UUID) throws
+
+    /// The full binding of a scanned (unresolvable) GTIN in ONE
+    /// transaction (ticket #24, CodeRabbit: separate transactions
+    /// for product creation, alias creation and the row bookings
+    /// could commit product + alias while a later row booking
+    /// fails — partial state). Creates the target product when
+    /// missing (`product.gtin` free, primary OR alias → reuse),
+    /// binds `scannedGTIN` as an alias when it differs from the
+    /// target's own GTIN, then books and removes ALL open queue
+    /// rows of `scannedGTIN` (per row at its own location).
+    ///
+    /// Throws `InventoryError.duplicateGTIN` when the target GTIN
+    /// is taken by a different product, or `scannedGTIN` is the
+    /// primary GTIN of / alias of a different product; atomic:
+    /// either the full binding (product, alias, all rows) commits
+    /// or nothing does.
+    ///
+    /// - Returns: the product the scanned GTIN now resolves to,
+    ///   and the number of queue rows booked in this run.
+    func bindGTIN(scannedGTIN: String, product: Product) throws -> (
+        product: Product,
+        bookedRows: Int
+    )
 
     /// Einbuchen for a queued UnresolvedScan (ticket #14): books the
     /// scan's full quantity at the scan's location in the StockLevel

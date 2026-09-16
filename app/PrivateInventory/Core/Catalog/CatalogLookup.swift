@@ -183,6 +183,12 @@ struct CatalogLookup {
 
     /// Re-resolves the UnresolvedScan queue (ADR-0003).
     ///
+    /// A local Product under the scanned GTIN (primary or alias,
+    /// ADR-0009) is booked directly without any catalog lookup —
+    /// the user's curated truth beats the external catalog, and a
+    /// fresh negative cache entry must not keep the rows queued
+    /// after a manual/photo resolution (ticket #24, D7a).
+    ///
     /// For every queued scan, in `createdAt` order: run the
     /// cache-first lookup for the scanned GTIN.
     /// - resolved → the `Product` is created when missing (an
@@ -203,6 +209,27 @@ struct CatalogLookup {
 
         var resolved = 0
         for scan in try repository.fetchUnresolvedScans() {
+            // Path 1 (ADR-0008/ADR-0009, ticket #24 D7a): a local product
+            // under the scanned GTIN (primary or alias) is the user's
+            // curated truth and beats the external catalog; book without any
+            // network — a fresh negative cache entry must not keep the rows
+            // queued after a manual/photo resolution.
+            if let local = try repository.fetchProduct(gtin: scan.gtin) {
+                do {
+                    _ = try repository.bookUnresolvedScan(
+                        scanID: scan.id,
+                        productID: local.id
+                    )
+                    resolved += 1
+                } catch InventoryError.missingParent {
+                    // The row vanished between the fetch and the
+                    // booking — a concurrent resolver (manual bind,
+                    // another queue run) already booked and removed
+                    // it. Nothing left to do for this row.
+                    continue
+                }
+                continue
+            }
             guard let catalog = try await resolve(gtin: scan.gtin) else {
                 // Still unresolvable: leave the scan in the queue
                 // and try the next one.

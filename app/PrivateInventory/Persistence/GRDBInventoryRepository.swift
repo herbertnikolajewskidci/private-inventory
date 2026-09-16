@@ -32,6 +32,14 @@ struct GRDBInventoryRepository: InventoryRepository {
             guard existing == nil else {
                 throw InventoryError.duplicateGTIN
             }
+            // A GTIN that is already an alias of a product can never
+            // become a primary GTIN (ADR-0009).
+            let aliased = try GTINAlias
+                .filter(Column("gtin") == product.gtin)
+                .fetchOne(database)
+            guard aliased == nil else {
+                throw InventoryError.duplicateGTIN
+            }
             try product.insert(database)
             return product
         }
@@ -39,7 +47,17 @@ struct GRDBInventoryRepository: InventoryRepository {
 
     func fetchProduct(gtin: String) throws -> Product? {
         try queue.read { database in
-            try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            let product = try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            guard let product else {
+                // Alias GTINs (ADR-0009): the scanned barcode belongs
+                // to the product it is bound to.
+                let alias = try GTINAlias.filter(Column("gtin") == gtin).fetchOne(database)
+                guard let alias else { return nil }
+                return try Product
+                    .filter(Column("id") == alias.productID.uuidString)
+                    .fetchOne(database)
+            }
+            return product
         }
     }
 
@@ -205,5 +223,121 @@ struct GRDBInventoryRepository: InventoryRepository {
         else {
             throw InventoryError.missingParent
         }
+    }
+}
+
+// MARK: - GTIN aliases + binding (ADR-0009)
+
+// Separate extension (same file, so the private helpers of the
+// struct stay visible): keeps the struct body within the
+// SwiftLint type-body limit while the alias logic stays together.
+
+extension GRDBInventoryRepository {
+    func createGTINAlias(gtin: String, productID: UUID) throws {
+        try queue.write { database in
+            try requireProduct(database, productID)
+            // A primary GTIN is never an alias (ADR-0009).
+            let primary = try Product.filter(Column("gtin") == gtin).fetchOne(database)
+            guard primary == nil else {
+                throw InventoryError.duplicateGTIN
+            }
+            let alias = try GTINAlias.filter(Column("gtin") == gtin).fetchOne(database)
+            if let alias {
+                // The same alias twice is a no-op; a different
+                // product owns the GTIN already.
+                guard alias.productID != productID else { return }
+                throw InventoryError.duplicateGTIN
+            }
+            try GTINAlias(gtin: gtin, productID: productID).insert(database)
+        }
+    }
+
+    func bindGTIN(scannedGTIN: String, product: Product) throws -> (
+        product: Product,
+        bookedRows: Int
+    ) {
+        try queue.write { database in
+            let target = try targetProduct(database, requested: product)
+            try bindScannedGTIN(database, scannedGTIN: scannedGTIN, target: target)
+            let rows = try UnresolvedScan
+                .filter(Column("gtin") == scannedGTIN)
+                .order(Column("createdAt").asc)
+                .fetchAll(database)
+            for scan in rows {
+                try bookAndDelete(database, scan: scan, productID: target.id)
+            }
+            return (target, rows.count)
+        }
+    }
+
+    /// Create-or-reuse of the binding's target product (within the
+    /// open transaction of `bindGTIN`): a fresh primary GTIN is
+    /// inserted, an existing primary is reused, and a target GTIN
+    /// that is already an ALIAS of a product reuses THAT product
+    /// (alias-aware reuse, ADR-0009).
+    private func targetProduct(_ database: Database, requested product: Product) throws -> Product {
+        if let primary = try Product.filter(Column("gtin") == product.gtin).fetchOne(database) {
+            return primary
+        }
+        let aliased = try GTINAlias
+            .filter(Column("gtin") == product.gtin)
+            .fetchOne(database)
+        if let aliased {
+            guard let aliasedProduct = try Product
+                .filter(Column("id") == aliased.productID.uuidString)
+                .fetchOne(database)
+            else {
+                // Defensive: a dangling alias (the repository
+                // validates parents itself, ADR-0005).
+                throw InventoryError.missingParent
+            }
+            return aliasedProduct
+        }
+        try product.insert(database)
+        return product
+    }
+
+    /// The scanned GTIN becomes an alias of the target when it
+    /// differs (ADR-0009); a primary/alias owned by a DIFFERENT
+    /// product is refused (within the open transaction of
+    /// `bindGTIN`).
+    private func bindScannedGTIN(_ database: Database, scannedGTIN: String, target: Product) throws {
+        guard target.gtin != scannedGTIN else { return }
+        let scannedPrimary = try Product
+            .filter(Column("gtin") == scannedGTIN)
+            .fetchOne(database)
+        guard scannedPrimary == nil else {
+            throw InventoryError.duplicateGTIN
+        }
+        if let alias = try GTINAlias.filter(Column("gtin") == scannedGTIN).fetchOne(database) {
+            // The same binding twice is a no-op; a binding to a
+            // different product is refused.
+            guard alias.productID == target.id else {
+                throw InventoryError.duplicateGTIN
+            }
+        } else {
+            try GTINAlias(gtin: scannedGTIN, productID: target.id)
+                .insert(database)
+        }
+    }
+
+    /// Einbuchen of ONE queued row for the binding (within the open
+    /// transaction of `bindGTIN`): books the scan's full quantity at
+    /// the scan's location, then removes the scan — the
+    /// `bookUnresolvedScan` pattern.
+    private func bookAndDelete(_ database: Database, scan: UnresolvedScan, productID: UUID) throws {
+        var level = try level(
+            database,
+            productID: productID,
+            locationID: scan.locationID
+        ) ?? StockLevel(
+            productID: productID,
+            locationID: scan.locationID
+        )
+        for _ in 0 ..< scan.quantity {
+            level.scanIn()
+        }
+        try level.save(database)
+        try scan.delete(database)
     }
 }

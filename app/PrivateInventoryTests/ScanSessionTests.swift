@@ -383,4 +383,15 @@ private final class RecordingRepository: InventoryRepository, @unchecked Sendabl
     func bookUnresolvedScan(scanID _: UUID, productID _: UUID) throws -> StockLevel {
         fatalError()
     }
+
+    func createGTINAlias(gtin _: String, productID _: UUID) throws {
+        fatalError()
+    }
+
+    func bindGTIN(
+        scannedGTIN _: String,
+        product _: Product
+    ) throws -> (product: Product, bookedRows: Int) {
+        fatalError()
+    }
 }

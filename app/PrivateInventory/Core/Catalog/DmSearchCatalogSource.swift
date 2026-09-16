@@ -13,7 +13,11 @@ import Foundation
 /// fixture headers). The client respects the header by forwarding
 /// its `max-age` in `ResolvedProduct.cacheTTL`; the catalog cache
 /// (ticket #14) applies it.
-struct DmSearchCatalogSource: CatalogSource {
+///
+/// Also conforms to `CatalogSearch` (ticket #24): the free-text
+/// search is the shared core, and `resolve(gtin:)` picks the exact
+/// GTIN match out of the candidates.
+struct DmSearchCatalogSource: CatalogSource, CatalogSearch {
     private let loader: any URLLoading
 
     /// A descriptive User-Agent identifies the app to the backend.
@@ -25,32 +29,53 @@ struct DmSearchCatalogSource: CatalogSource {
         self.loader = loader
     }
 
+    /// Exact-GTIN resolution (ADR-0002): runs the shared search and
+    /// picks the candidate whose own GTIN equals the queried one
+    /// (nil = clean not-found).
     func resolve(gtin: String) async throws -> ResolvedProduct? {
         guard !gtin.isEmpty, gtin.allSatisfy({ $0.isNumber && $0.isASCII }) else {
             throw CatalogError.invalidGtin(gtin: gtin)
         }
-        let request = Self.makeRequest(gtin: gtin)
+        return try await searchRaw(query: gtin).first { $0.gtin == gtin }
+    }
+
+    /// Free-text product search (ticket #24): empty/whitespace-only
+    /// queries return `[]` without a network call.
+    func search(query: String) async throws -> [ResolvedProduct] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return try await searchRaw(query: trimmed)
+    }
+
+    /// The shared core: ONE network call, and EVERY product with a
+    /// non-empty title and a non-empty own GTIN mapped to a
+    /// `ResolvedProduct` (order preserved, possibly empty).
+    private func searchRaw(query: String) async throws -> [ResolvedProduct] {
+        let request = Self.makeRequest(query: query)
         let (data, response) = try await load(request)
         guard response.statusCode == 200 else {
             throw CatalogError.network(reason: "dm search answered HTTP \(response.statusCode)")
         }
         let search = try decodeCatalogJSON(DmSearchResponse.self, from: data)
-        guard let product = search.products.first(where: { $0.gtin?.value == gtin }) else {
-            // Empty list or other products: clean not-found.
-            return nil
+        let ttl = Self.cacheTTL(from: response)
+        return search.products.compactMap { product in
+            guard let name = product.title, !name.isEmpty,
+                  let gtin = product.gtin?.value, !gtin.isEmpty,
+                  // CodeRabbit: a malformed candidate GTIN must not
+                  // become a persistent product GTIN (digits only).
+                  gtin.allSatisfy({ $0.isNumber && $0.isASCII })
+            else {
+                return nil
+            }
+            return ResolvedProduct(
+                gtin: gtin,
+                name: name,
+                brand: product.brandName ?? "",
+                imageURL: product.tileData?.images?.first?.tileSrc.flatMap { URL(string: $0) },
+                source: .search,
+                cacheTTL: ttl
+            )
         }
-        guard let name = product.title, !name.isEmpty else {
-            // Found but no usable name: no storable data.
-            return nil
-        }
-        return ResolvedProduct(
-            gtin: gtin,
-            name: name,
-            brand: product.brandName ?? "",
-            imageURL: product.tileData?.images?.first?.tileSrc.flatMap { URL(string: $0) },
-            source: .search,
-            cacheTTL: Self.cacheTTL(from: response)
-        )
     }
 
     private func load(_ request: URLRequest) async throws -> (data: Data, response: HTTPURLResponse) {
@@ -65,16 +90,17 @@ struct DmSearchCatalogSource: CatalogSource {
 
     // MARK: - Request
 
-    /// The crawl endpoint with the GTIN as query term (the dead
+    /// The crawl endpoint with the query term (a GTIN for
+    /// `resolve`, free text for the photo search; the dead
     /// direct-GTIN endpoints under `products.dm.de` are history, see
     /// research doc section 1.2).
-    static func makeRequest(gtin: String) -> URLRequest {
+    static func makeRequest(query: String) -> URLRequest {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "product-search.services.dmtech.com"
         components.path = "/de/search/crawl"
         components.queryItems = [
-            URLQueryItem(name: "query", value: gtin),
+            URLQueryItem(name: "query", value: query),
             URLQueryItem(name: "pageSize", value: "5"),
             URLQueryItem(name: "currentPage", value: "0"),
             URLQueryItem(name: "type", value: "search-static")

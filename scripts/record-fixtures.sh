@@ -135,6 +135,18 @@ record_request "200 404" \
   -o "${FIXTURE_DIR}/dm_search_product_miss.json"
 echo "recorded dm_search_product_miss.{json,headers.txt}"
 
+# 2.2 Free-text query (photo recognition, ticket #24): OCR label
+# text → the current (relisted) products of the line. Candidates
+# keep their OWN GTIN in the response (they are not the queried
+# GTIN); the photo flow binds the scanned (delisted) GTIN as an
+# alias to the confirmed candidate (ADR-0009).
+record_request 200 \
+  'https://product-search.services.dmtech.com/de/search/crawl?query=Balea%20Men%20Golden%20Intense&pageSize=5&currentPage=0&type=search-static' \
+  -H "User-Agent: ${UA}" \
+  -D "${FIXTURE_DIR}/dm_search_text_query.headers.txt" \
+  -o "${FIXTURE_DIR}/dm_search_text_query.json"
+echo "recorded dm_search_text_query.{json,headers.txt}"
+
 # ----------------------------------------------------------------------
 # 3. OpenBeautyFacts / OpenFoodFacts (ODbL; same Product Opener API)
 #    Hit fixtures are real products with name, brand and front image;

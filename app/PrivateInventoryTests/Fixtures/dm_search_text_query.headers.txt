@@ -1,0 +1,16 @@
+HTTP/2 200 
+cache-control: public, max-age=345600, s-maxage=345600
+content-length: 5317
+content-security-policy: default-src 'self'; img-src 'self'; object-src 'none'
+content-type: application/json
+referrer-policy: no-referrer-when-downgrade
+strict-transport-security: max-age=31536000 ; includeSubDomains
+vary: Origin, Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-vcap-request-id: eea20b31-73eb-48af-52f4-f51834298beb
+x-xss-protection: 1; mode=block
+date: Wed, 16 Sep 2026 13:36:15 GMT
+via: 1.1 google
+alt-svc: clear
+

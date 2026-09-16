@@ -11,6 +11,12 @@ struct AppEnvironment {
     let lookup: CatalogLookup
     let locationStore: SessionLocationStore
     let scanner: any Scanner
+    /// Free-text catalog search (photo recognition, ticket #24):
+    /// the same dm search instance as in the lookup chain.
+    let catalogSearch: any CatalogSearch
+    /// On-device OCR seam (ticket #24): stub in the simulator,
+    /// Vision on device.
+    let recognizer: any TextRecognizer
     /// Trigger ② monitor; stays alive on the environment.
     let pathMonitor: NWPathMonitor
 
@@ -18,11 +24,13 @@ struct AppEnvironment {
         let database = try InventoryDatabase(path: Self.databasePath())
         let repository = GRDBInventoryRepository(database: database)
         let cache = GRDBCatalogCache(database: database)
+        // ONE dm search instance: lookup chain and photo search.
+        let dmSearch = DmSearchCatalogSource()
         let lookup = CatalogLookup(
             cache: cache,
             sources: [
                 DmMcpCatalogSource(),
-                DmSearchCatalogSource(),
+                dmSearch,
                 OBFOffCatalogSource()
             ],
             repository: repository
@@ -30,11 +38,14 @@ struct AppEnvironment {
         self.database = database
         self.repository = repository
         self.lookup = lookup
+        catalogSearch = dmSearch
         locationStore = SessionLocationStore()
         #if targetEnvironment(simulator)
             scanner = ScannerStub()
+            recognizer = TextRecognizerStub()
         #else
             scanner = VisionKitScanner()
+            recognizer = VisionTextRecognizer()
         #endif
         pathMonitor = NWPathMonitor()
     }
@@ -208,11 +219,15 @@ private struct MainTabView: View {
             }
             .tag(Tab.scan)
 
-            QueueTabView(repository: environment.repository)
-                .tabItem {
-                    Label("Queue", systemImage: "tray.2")
-                }
-                .tag(Tab.queue)
+            QueueTabView(
+                repository: environment.repository,
+                catalogSearch: environment.catalogSearch,
+                recognizer: environment.recognizer
+            )
+            .tabItem {
+                Label("Queue", systemImage: "tray.2")
+            }
+            .tag(Tab.queue)
         }
     }
 }

@@ -21,6 +21,13 @@ Schlüssel eines Produkts.
 _Avoid_: QR-Code, Strichcode (im Code), Barcode (im Code)
 _Code_: `GTIN`
 
+**Alias-GTIN**:
+Eine weitere GTIN, die auf ein bestehendes Produkt zeigt (alte
+Verpackung nach Relisting/Neuformulierung); Buchungen über sie
+landen bei demselben Produkt (ADR-0009).
+_Avoid_: Duplikat, zweites Produkt
+_Code_: `GTINAlias`
+
 **Standort**:
 Frei definierbarer Lagerort eines Bestands (Defaults: Keller,
 Vorratsschrank).
