@@ -12,11 +12,9 @@ struct ProductBinding {
         self.repository = repository
     }
 
-    /// Number of open queue rows for a GTIN (D5a: the binding
-    /// books ALL open rows of the scanned GTIN, not just one).
-    func openRowCount(forGTIN gtin: String) throws -> Int {
-        try repository.fetchUnresolvedScans().filter { $0.gtin == gtin }.count
-    }
+    // The AUTHORITATIVE booked-row count comes from `bind`
+    // (the transaction; a pre-count could race a concurrent queue
+    // run, CodeRabbit).
 
     /// Binds `scannedGTIN` (the GTIN the queue rows are queued
     /// under) to a product:
@@ -41,16 +39,18 @@ struct ProductBinding {
     ///   existing GTIN into the form) — the queue stays untouched;
     ///   `missingParent` when a queue row's location or the product
     ///   vanished mid-run.
-    /// - Returns: the product the scanned GTIN now resolves to.
+    /// - Returns: the product the scanned GTIN now resolves to,
+    ///   and the number of queue rows booked in the transaction
+    ///   (the display value for the confirmation, CodeRabbit).
     func bind(
         scannedGTIN: String,
         productGTIN: String?,
         name: String,
         brand: String,
         imageURL: URL?
-    ) throws -> Product {
+    ) throws -> (product: Product, bookedRows: Int) {
         let targetGTIN = productGTIN ?? scannedGTIN
-        let (product, _) = try repository.bindGTIN(
+        return try repository.bindGTIN(
             scannedGTIN: scannedGTIN,
             product: Product(
                 gtin: targetGTIN,
@@ -60,6 +60,5 @@ struct ProductBinding {
                 source: .manual
             )
         )
-        return product
     }
 }

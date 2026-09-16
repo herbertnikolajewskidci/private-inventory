@@ -76,20 +76,22 @@ erhöht.
 
 Um alle erkannten Textzeilen sowie deren
 Konfidenzwerte zu erhalten, iteriert man
-über die `VNRecognizedTextObservation`-
-Objekte.
+über die `RecognizedTextObservation`-Objekte
+(Swift-native Typen des Struct-Requests, CodeRabbit-Korrektur:
+die `VN…`-Namen gehören zur Legacy-
+`VNRecognizeTextRequest`-API).
 
 - **Typen**:
-  - `VNRecognizedTextObservation`:
-    Repräsentiert eine erkannten
+  - `RecognizedTextObservation`:
+    Repräsentiert einen erkannten
     Textblock/Zeile.
   - `topCandidates(_:)`: Liefert die
     wahrscheinlichsten Kandidaten für
-    diese Zeile.
-  - `VNRecognizedTextCandidate`:
+    diese Zeile (`RecognizedText`).
+  - `RecognizedText`:
     Enthält das Property `.string`
-    (der Text) und `.confidence` (Float-
-    Wert für die Sicherheit).
+    (der Text) und `.confidence`
+    (Konfidenzwert).
 
 ### 4. Zugriff auf die Mediathek (PhotosPicker)
 

@@ -60,7 +60,10 @@ struct DmSearchCatalogSource: CatalogSource, CatalogSearch {
         let ttl = Self.cacheTTL(from: response)
         return search.products.compactMap { product in
             guard let name = product.title, !name.isEmpty,
-                  let gtin = product.gtin?.value, !gtin.isEmpty
+                  let gtin = product.gtin?.value, !gtin.isEmpty,
+                  // CodeRabbit: a malformed candidate GTIN must not
+                  // become a persistent product GTIN (digits only).
+                  gtin.allSatisfy({ $0.isNumber && $0.isASCII })
             else {
                 return nil
             }

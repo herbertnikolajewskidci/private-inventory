@@ -46,7 +46,7 @@ struct ProductBindingTests {
         try recordScan(inventory, gtin: gtinA, locationID: cellar.id)
 
         // When
-        let product = try ProductBinding(repository: inventory.repository).bind(
+        let (product, bookedRows) = try ProductBinding(repository: inventory.repository).bind(
             scannedGTIN: gtinA,
             productGTIN: nil,
             name: "Balea Deo",
@@ -64,6 +64,7 @@ struct ProductBindingTests {
             )
         )
         #expect(stock.quantity == 2)
+        #expect(bookedRows == 2)
         #expect(try inventory.repository.fetchUnresolvedScans().isEmpty)
     }
 
@@ -97,7 +98,7 @@ struct ProductBindingTests {
         try recordScan(inventory, gtin: gtinA, locationID: pantry.id)
 
         // When
-        let product = try ProductBinding(repository: inventory.repository).bind(
+        let (product, bookedRows) = try ProductBinding(repository: inventory.repository).bind(
             scannedGTIN: gtinA,
             productGTIN: gtinB,
             name: existing.name,
@@ -124,6 +125,7 @@ struct ProductBindingTests {
         )
         #expect(cellarStock.quantity == 1)
         #expect(pantryStock.quantity == 1)
+        #expect(bookedRows == 2)
         #expect(try inventory.repository.fetchUnresolvedScans().isEmpty)
     }
 
@@ -146,7 +148,7 @@ struct ProductBindingTests {
         try recordScan(inventory, gtin: gtinA, locationID: pantry.id)
 
         // When
-        let product = try ProductBinding(repository: inventory.repository).bind(
+        let (product, bookedRows) = try ProductBinding(repository: inventory.repository).bind(
             scannedGTIN: gtinA,
             productGTIN: gtinB,
             name: "Deospray Golden Intense, 150 ml",

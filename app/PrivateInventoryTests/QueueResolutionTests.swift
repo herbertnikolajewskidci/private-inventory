@@ -11,7 +11,10 @@ struct QueueResolutionTests {
     private let gtinC = "4000000000003"
     private let baseTime = Date(timeIntervalSince1970: 1_700_000_000)
 
-    /// A fresh in-memory inventory plus a lookup wired to it.
+    /// A fresh in-memory inventory plus a lookup wired to it. The
+    /// clock is FIXED at the test's base time so cache fixtures are
+    /// deterministic (CodeRabbit: a `Date()` clock makes a baseTime
+    /// relative negative entry stale before the run).
     private func makeLookup(
         sources: [StubCatalogSource]
     ) throws -> (inventory: TestInventory, lookup: CatalogLookup) {
@@ -20,7 +23,8 @@ struct QueueResolutionTests {
         let lookup = CatalogLookup(
             cache: cache,
             sources: sources,
-            repository: inventory.repository
+            repository: inventory.repository,
+            now: { baseTime }
         )
         return (inventory, lookup)
     }

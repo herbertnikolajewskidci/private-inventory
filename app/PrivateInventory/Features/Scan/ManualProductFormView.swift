@@ -76,7 +76,7 @@ struct ManualProductFormView: View {
                 errorMessage = String(localized: "Bitte einen Namen eingeben.")
                 return
             }
-            try binding.bind(
+            _ = try binding.bind(
                 scannedGTIN: scannedGTIN,
                 productGTIN: gtin.isEmpty ? nil : gtin,
                 name: name.trimmingCharacters(in: .whitespaces),

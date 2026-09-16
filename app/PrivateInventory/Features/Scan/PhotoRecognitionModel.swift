@@ -103,8 +103,10 @@ final class PhotoRecognitionModel {
     /// the view).
     func confirm(candidate: ResolvedProduct) throws {
         do {
-            let bookedRows = try binding.openRowCount(forGTIN: scannedGTIN)
-            let product = try binding.bind(
+            // The binding transaction reports the authoritative
+            // count (a pre-count could race a concurrent queue run,
+            // CodeRabbit).
+            let (product, bookedRows) = try binding.bind(
                 scannedGTIN: scannedGTIN,
                 productGTIN: candidate.gtin,
                 name: candidate.name,
