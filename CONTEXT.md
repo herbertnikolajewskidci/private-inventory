@@ -38,6 +38,20 @@ erhöhen (Supermarkt-Kassen-Prinzip).
 _Avoid_: Hinzufügen, Einchecken
 _Code_: `scanIn()`
 
+**Scan-Session**:
+Der immer-an-Erfassungs-Kontext im Scan-Tab: der Sitzungs-Standort plus
+der Einstiegspunkt, der jeden Scan still einbucht (kein Start/Ende, kein
+Standort-Dialog pro Scan).
+_Avoid_: Scan-Flow, Scan-Vorgang
+_Code_: `ScanSession`
+
+**Sitzungs-Standort**:
+Der Standort, an dem die Scan-Session einbucht; bewusst gewählt,
+über App-Starts hinweg erhalten (zuletzt genutzt, Fallback Keller),
+nie pro Scan.
+_Avoid_: aktiver Standort, aktueller Lagerort
+_Code_: `sessionLocationID`
+
 **Entnehmen**:
 Die Menge eines Produkts an einem Standort per Tap/Swipe reduzieren
 (Verbrauch, kein Scan-Zwang).
