@@ -157,10 +157,11 @@ final class PhotoRecognitionModel {
     }
 
     /// Adds a user-typed term as a SELECTED custom chip (D4b).
-    /// Whitespace is trimmed; an empty/whitespace-only term is
-    /// ignored. Does NOT run a search.
+    /// ALL whitespace is trimmed (including newlines, CodeRabbit:
+    /// a newline-only term must never become a chip); an empty/
+    /// whitespace-only term is ignored. Does NOT run a search.
     func addCustomTerm(_ raw: String) {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let chip = QueryChip(text: trimmed, isCustom: true)
         chips.append(chip)

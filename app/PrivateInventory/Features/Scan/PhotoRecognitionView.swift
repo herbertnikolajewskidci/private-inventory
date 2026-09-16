@@ -205,7 +205,9 @@ struct PhotoRecognitionView: View {
                     Image(systemName: "plus.circle.fill")
                 }
                 .disabled(
-                    newTerm.trimmingCharacters(in: .whitespaces).isEmpty
+                    newTerm.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    ).isEmpty
                 )
                 .accessibilityLabel("Begriff hinzufügen")
             }

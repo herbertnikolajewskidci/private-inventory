@@ -257,6 +257,44 @@ struct PhotoQueryTests {
         #expect(queries[0] == "Balea MEN Golden Intense Deospray")
         #expect(queries[1] == "Balea MEN Golden Intense Deospray Deospray")
     }
+
+    /// Newlines count as whitespace in custom terms (CodeRabbit,
+    /// PR #27): a newline-only term adds NO chip, and a term
+    /// surrounded by newlines is trimmed (D4b).
+    ///
+    /// Given: seeded state from applyRecognized
+    /// When: addCustomTerm("\n") then addCustomTerm("\n\tDeo\n")
+    /// Then: the first adds no chip; the second adds exactly one
+    /// chip with text "Deo", selected
+    @MainActor
+    @Test func customTermsTrimNewlinesAndIgnoreNewlineOnlyTerms() async throws {
+        // Given
+        let searchRecorder = SearchRecorder()
+        let inventory = try TestInventory()
+        let model = PhotoRecognitionModel(
+            scannedGTIN: "4066447599992",
+            search: searchRecorder,
+            binding: ProductBinding(repository: inventory.repository),
+            recognizer: TextRecognizerStub()
+        )
+        await model.applyRecognized(lines: [
+            RecognizedLine(text: "Balea MEN", confidence: 0.9)
+        ])
+
+        // When: a newline-only term
+        model.addCustomTerm("\n")
+        #expect(model.chips.count == 1)
+
+        // When: a term wrapped in newlines
+        model.addCustomTerm("\n\tDeo\n")
+
+        // Then: one new chip, trimmed, selected (D4b)
+        #expect(model.chips.count == 2)
+        #expect(model.chips[1].text == "Deo")
+        #expect(model.chips[1].isCustom)
+        #expect(model.selected.contains(model.chips[1].id))
+        #expect(model.searchQuery == "Balea MEN Deo")
+    }
 }
 
 /// Records the queries and returns canned candidates (ADR-0006:
